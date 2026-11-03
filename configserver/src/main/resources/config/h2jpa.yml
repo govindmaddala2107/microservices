@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: h2jpa
+
+  h2:
+    console:
+      enabled: true
+
+  datasource:
+    url: jdbc:h2:mem:testdb
+build:
+  id: 103
+  version: NativeDefault
+  date: 31102026
+
+server:
+  servlet:
+    context-path: /api/public

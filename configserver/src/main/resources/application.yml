@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: configserver
+  profiles:
+    active: native # to tell to use local file system
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config # to check config folder in resources
+#  cloud:
+#    config:
+#      server:
+#        git:
+#          uri: https://github.com/govindmaddala2107/app-config
+#          #          If git repo is private add username and password
+#          username: ${GIT_USER}
+#          password: ${GIT_TOKEN}
+# encrypt:
+#   key: {ENCRYPT_KEY}
+
+encrypt:
+  key-store:
+    location: config-server.jks
+    password: ${CONFIG_PASSWORD}
+    alias: config-server-key
+    secret: ${CONFIG_PASSWORD}
+logging:
+  level:
+    org.springframework.cloud.config.server: ERROR
+
+server:
+  port: 888
