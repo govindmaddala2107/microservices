@@ -3,6 +3,9 @@ spring:
     name: h2jpa
   config:
     import: configserver:http://localhost:888
+  profiles:
+    active: dev
+
 #  h2:
 #    console:
 #      enabled: true

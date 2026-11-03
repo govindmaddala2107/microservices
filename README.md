@@ -195,7 +195,7 @@
     }
     ```
 
-### Storing Configurations in Database for Dynamic Updates:
+## Storing Configurations in Database for Dynamic Updates:
   - Here we can store configuration settings in database and can use.
   - Dependencies needed are:
     - ```JDBC API ```
@@ -225,7 +225,66 @@
               default-label: main
     ```
   - spring.profiles.active should be **jdbc** when we use database for configuration, else springboot will consider git.
-#### Spring Cloud Config Encryption (`encrypt.key`)
+
+## File-Based Configuration:
+- Also we can keep file based configuration and it is called as **native** configuration.
+- #### Cloud Server Setup:
+  - create **config** folder in ```configserver > src > main > resources > config``` and create files for project **h2jpa** like:
+    - h2jpa.yml [keep content of h2jpa.yml file present in git]
+    - h2jpa-dev.yml [keep content of h2jpa-dev.yml file present in git]
+      - i.e file name should be alike application name.
+  - Now in **application.yml** keep config like:
+    ```yaml
+    spring:
+      application:
+        name: configserver
+      profiles:
+        active: native # to tell to use local file system
+      cloud:
+        config:
+          server:
+            native:
+              search-locations: classpath:/config # to check config folder in resources
+    logging:
+      level:
+        org.springframework.cloud.config.server: ERROR
+
+    server:
+      port: 888
+    ```
+- #### Cloud Client Setup:
+  - Now in client, delete all *.yml files and keep **application.yml** and keep
+    ```yml
+    spring:
+      application:
+        name: h2jpa
+      config:
+        import: configserver:http://localhost:888
+      profiles:
+        active: dev
+    ```
+  - [Build-Info-With-Files](http://localhost:8080/api/public/build-info) returns like 
+    - In General, it returns content from h2jpa.yml
+      ```json
+      {
+        "id": 101,
+        "version": "NativeDefault",
+        "date": 31102026
+      }
+      ```
+    - for spring.profiles.active = "dev", returns content from h2jpa-dev.yml
+      ```json
+      {
+        "id": 101,
+        "version": "NativeDev",
+        "date": 31102026
+      }
+      ```
+    
+  
+
+
+## Spring Cloud Config Encryption (`encrypt.key`)
 
 ##### Why do we need `encrypt.key`?
 
@@ -426,9 +485,9 @@ export ENCRYPT_KEY=MySuperSecretKey
 
 ---
 
-## Important Notes
 
-### Changing the Key
+
+##### Changing the Key
 
 If you change:
 
@@ -448,7 +507,7 @@ all previously encrypted values become invalid and must be encrypted again.
 
 ---
 
-### Use Strong Keys
+##### Use Strong Keys
 
 Bad:
 
@@ -466,7 +525,7 @@ encrypt:
 
 ---
 
-## Typical Production Usage
+##### Typical Production Usage
 
 ```text
 Git Repository
@@ -499,7 +558,7 @@ Receive Plain Text Configuration
   ![DecryptExample](images/DecryptExample.png)
 - For encryption and decryption, encrypt.key will be used.
 
-### Keystore & RSA Key Pair:
+##### Keystore & RSA Key Pair:
 - Instead of storing a plain-text encryption key directly in application.yml, Spring Cloud Config can use a Java Keystore.
 
 - A Keystore is a secure file that stores encryption keys and certificates.
@@ -715,7 +774,7 @@ Receive Plain Text Configuration
     - Additional options:
       - keysize 2048 → RSA key length (recommended minimum)
       - validity 3650 → certificate valid for 10 years
-  - #### Config setup:
+  - ###### Config setup:
     - No changes in client setup
     - In Cloud config Server side:
       - Copy C://certi/certiconfig-server.jks to src/main/resources of cloud config server folder.
