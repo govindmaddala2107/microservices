@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: carts
+  config:
+    import: optional:configserver:http://localhost:8888
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  profiles:
+    active: dev
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+server:
+  port: 8081
