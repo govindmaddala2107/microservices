@@ -1,0 +1,242 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: ConfigurationSetup
+meta:
+  id: wrk_a0bfa3558be8493eaaed9ba40a8b0be3
+  created: 1793440834555
+  modified: 1793802609200
+  description: ""
+collection:
+  - name: ConfigServer
+    meta:
+      id: fld_8c56dd9ec0554c6da7f866871e470de5
+      created: 1793440848333
+      modified: 1793440848333
+      sortKey: -1793440848333
+      description: ""
+    children:
+      - url: http://localhost:888/h2jpa/default
+        name: Client-Default
+        meta:
+          id: req_b7ea3e6d924d4dbbb807142cc7a8e8f8
+          created: 1793440905364
+          modified: 1793528702081
+          isPrivate: false
+          description: ""
+          sortKey: -1793440905364
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:888/h2jpa/dev
+        name: Client-dev
+        meta:
+          id: req_95b64d5c873646b8844d47842ca4fd38
+          created: 1793446197883
+          modified: 1793446429810
+          isPrivate: false
+          description: ""
+          sortKey: -1792716704806
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:888/encrypt
+        name: Encrypt
+        meta:
+          id: req_5770f8b14258418dbffed9e5dff2155e
+          created: 1793452078197
+          modified: 1793452962685
+          isPrivate: false
+          description: ""
+          sortKey: -1793452078197
+        method: POST
+        body:
+          mimeType: text/plain
+          text: DataBase123
+        headers:
+          - name: Content-Type
+            value: text/plain
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:888/decrypt
+        name: Decrypt
+        meta:
+          id: req_da7f510129184910ad9fec5e056097ed
+          created: 1793452239400
+          modified: 1793453002469
+          isPrivate: false
+          description: ""
+          sortKey: -1793446520548
+        method: POST
+        body:
+          mimeType: text/plain
+          text: 3a58fd6a4ebec88b79127123097841e7bbedd1eb9c40a25b5aa52a46a2b88bd9
+        headers:
+          - name: Content-Type
+            value: text/plain
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:888/encrypt
+        name: Encrypt-RSA
+        meta:
+          id: req_8addf39d6fbb46ef9214b1442e96509a
+          created: 1793527766084
+          modified: 1793528705955
+          isPrivate: false
+          description: ""
+          sortKey: -1793449299372.5
+        method: POST
+        body:
+          mimeType: text/plain
+          text: updated5
+        headers:
+          - name: Content-Type
+            value: text/plain
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:888/decrypt
+        name: Decrypt-RSA
+        meta:
+          id: req_5094a14bef0841dbad5fd6a44912c6c5
+          created: 1793527787728
+          modified: 1793528592092
+          isPrivate: false
+          description: ""
+          sortKey: -1793443741723.5
+        method: POST
+        body:
+          mimeType: text/plain
+          text: AQC9H8ol0HobUXV3LtRT/rNXlC6JGTB+J99KbqBY8FI8kp0O6XSrCozAKLctlaby8WGXvLMx1xWuEiH1uGZwUkOFqLJg4tJ1CMDyAH/rHdUTk0cROHZtGfn9Yqzj0qFdI3nP36QlkmG2tTfBtsI/cy7khFLVNqWWVAHXgiGq5+GeSFWYhz0Sy0tGxiebP8GN1bTMH/UTB+rOXyUHp7Msx53a8vXEUggWDutrHuHZ9J9U9UxBKi3P+qs9cMseid3x4lmdSbWG3jVwTjU5aKU+iAjYgF6/V4SzBuWWJHAmmQx5tsxTmWIoXLafnFd0gtuZvXmrhMwrOC1o/2boEEk5/yjqkv09+lTvPxj19pYDTywYm6WR7vBOSDNmJR9IYTwT7XE=
+        headers:
+          - name: Content-Type
+            value: text/plain
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: ConfigClient
+    meta:
+      id: fld_b5e8831c1a0244c8b26c3533cc4f4d00
+      created: 1793440899632
+      modified: 1793440899632
+      sortKey: -1793440899632
+      description: ""
+    children:
+      - url: http://localhost:8080/api/public/build-info
+        name: BuildInfoBeforeRefresh
+        meta:
+          id: req_a550258d17f44e47bd13edf17cca29b2
+          created: 1793440962899
+          modified: 1793713739032
+          isPrivate: false
+          description: ""
+          sortKey: -1793440962899
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/public/build-info
+        name: BuildInfoAfterRefresh
+        meta:
+          id: req_d76703bf21f24692aaf53f20db9c8025
+          created: 1793441063643
+          modified: 1793441268894
+          isPrivate: false
+          description: ""
+          sortKey: -1793440934131.5
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/public/actuator/refresh
+        name: ActuatorServerRefresh
+        meta:
+          id: req_59bed75c782a4dac9bc0ca62f0373e47
+          created: 1793441069961
+          modified: 1793446911132
+          isPrivate: false
+          description: ""
+          sortKey: -1793440948515.25
+        method: POST
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: http://localhost:8080/api/public/build-info
+        name: BuildInfoWithFiles
+        meta:
+          id: req_f777bdd7a8e64aeda1fd8e7ab04621bf
+          created: 1793716435814
+          modified: 1793723257531
+          isPrivate: false
+          description: ""
+          sortKey: -1793440955707.125
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_90e1fadc82644fb8ba0df02f428324c2
+    created: 1793440834581
+    modified: 1793440834581
+environments:
+  name: Base Environment
+  meta:
+    id: env_0c6f72d3d9c440b3af2e834f8257adc6
+    created: 1793440834570
+    modified: 1793440834570
+    isPrivate: false
