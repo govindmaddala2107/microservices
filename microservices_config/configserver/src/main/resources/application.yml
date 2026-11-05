@@ -7,7 +7,8 @@ spring:
     config:
       server:
         native:
-          search-locations: classpath:/config
+          search-locations: file:///C:\Users\EDIUS X\Desktop\gomad\microservices\microservices_config\configserver\src\main\resources\config
+#          search-locations: classpath:/config
   rabbitmq:
     host: localhost
     port: 5672

@@ -283,7 +283,168 @@
     
   
 
+- #### Dynamic updation of Config using RabbitMQ:
+  - ##### RabbitMQ setup:
+    - ###### Setup in Machine
+      - RabbitMQ can be installed locally but using docker we can install it by 
+        ```powershell
+        # latest RabbitMQ 4.x
+        docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+        ```
+      - rabbitmq runs on port 5674 and rabbitmq-management runs on 15672.
+      - default credentials are guest and guest.
+    - ###### Setup in Springboot project:
+      - Dependency need is 
+        ```xml
+        <dependency>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+        </dependency>
+        ```
+      - setup in application.yml is
+        ```yaml
+        spring
+            rabbitmq:
+              host: localhost
+              port: 5672
+              username: guest
+              password: guest
 
+        management:
+          endpoints:
+            web:
+              exposure:
+                include: "*" # to include /busrefresh 
+        ```
+        - this could subscribe our springboot project to rabbitmq.
+    
+
+  - ##### Other required configuration for Dynamic updation:
+    - ##### Config Server setup: 
+      - **Dependencies needed:** 
+        - Actuator
+        - Spring Boot Starter AMQP
+        ```xml
+        <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+        </dependency>
+        ```
+        - Same dependencies are needed for **Config Client** also.
+      - **Config setup:**
+        - Before setup is 
+          ```yaml
+          spring:
+            application:
+              name: configserver
+            profiles:
+              active: native
+            cloud:
+              config:
+                server:
+                  native:
+                    search-locations: file:///C:\Users\EDIUS X\Desktop\gomad\microservices\microservices_config\configserver\src\main\resources\config
+          #          search-locations: classpath:/config
+            rabbitmq:
+              host: localhost
+              port: 5672
+              username: guest
+              password: guest
+
+          management:
+            endpoints:
+              web:
+                exposure:
+                  include: "*"
+          server:
+            port: 8888
+          ```
+        - for dynamic updation classpath should not be used because on application startup, it will bundle the config files when we configure with classpath.
+        - So for this, configuration will be like: **file:** followed by **///** and **full path of config** folder.
+      
+    - ##### COnfig Client Setup:
+      - **Dependencies needed:**
+        - actuator and Spring Boot Starter AMQP
+      - **Config setup:**
+        - Almost no changes but only we add actuator endpoints inclusion and rabbitmq subscription
+        ```yaml
+        spring:
+          application:
+            name: orders
+          config:
+            import: optional:configserver:http://localhost:8888
+          rabbitmq:
+            host: localhost
+            port: 5672
+            username: guest
+            password: guest
+
+        management:
+          endpoints:
+            web:
+              exposure:
+                include: "*"
+
+        server:
+          port: 8082
+        ```
+    - ###### API Endpoints using:
+      - [Orders Config details-Dev](http://localhost:8888/orders/dev)
+        ```json
+        {
+          "name": "orders",
+          "profiles": [
+            "dev"
+          ],
+          "label": null,
+          "version": null,
+          "state": null,
+          "propertySources": [
+            {
+              "name": "file:/C:/Users/EDIUS X/Desktop/gomad/microservices/microservices_config/configserver/src/main/resources/config/orders-dev.yml",
+              "source": {
+                "build.id": 101,
+                "build.version": "NativeDev",
+                "build.date": 1086486
+              }
+            },
+            {
+              "name": "file:/C:/Users/EDIUS X/Desktop/gomad/microservices/microservices_config/configserver/src/main/resources/config/orders.yml",
+              "source": {
+                "build.id": 101,
+                "build.version": "NativeDefault",
+                "build.date": 1086486
+              }
+            }
+          ]
+        }
+        ```
+      - [Orders Built Info](http://localhost:8082/build-info)   
+        - Active profile is default
+        ```json
+        {
+          "id": 101,
+          "version": "NativeDefault",
+          "date": 1086486,
+          "service": "orders"
+        }
+        ```
+      - Let's say version is changed from "NativeDefault" to "NativeDefaultUpdated"
+        - Automatically in config server, it will update, no need of refresh but to get updated one in Clients, you need to run **/busrefresh** on either client or server [anything works fine].
+      - Now make sure docker is running and run POST method [BusRefresh](http://localhost:8888/actuator/busrefresh) and [Orders Built Info](http://localhost:8082/build-info) will return 
+        ```json
+        {
+          "id": 101,
+          "version": "NativeDefaultUpdated",
+          "date": 1086486,
+          "service": "orders"
+        }
+        ```
+    - ###### Dependencies nee
 ## Spring Cloud Config Encryption (`encrypt.key`)
 
 ##### Why do we need `encrypt.key`?
