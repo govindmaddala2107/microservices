@@ -195,7 +195,7 @@
     }
     ```
 
-## Storing Configurations in Database for Dynamic Updates:
+### Storing Configurations in Database for Dynamic Updates:
   - Here we can store configuration settings in database and can use.
   - Dependencies needed are:
     - ```JDBC API ```
@@ -226,7 +226,7 @@
     ```
   - spring.profiles.active should be **jdbc** when we use database for configuration, else springboot will consider git.
 
-## File-Based Configuration:
+### File-Based Configuration:
 - Also we can keep file based configuration and it is called as **native** configuration.
 - #### Cloud Server Setup:
   - create **config** folder in ```configserver > src > main > resources > config``` and create files for project **h2jpa** like:
@@ -445,7 +445,7 @@
         }
         ```
     - ###### Dependencies nee
-## Spring Cloud Config Encryption (`encrypt.key`)
+### Spring Cloud Config Encryption (`encrypt.key`)
 
 ##### Why do we need `encrypt.key`?
 
@@ -976,3 +976,25 @@ Receive Plain Text Configuration
       ```text
       {cipher}AQCctP2LLrURp2WqovmUH6QdBN6jw5dKkvkent4YScF/wO73pu720TukJnOtqDYjll2tMn5yn35NL/bTEgMx/XMUzbKHt0mzxd2nr1L9mC2VvLwHTdLRz2W3bPBFxT2fycE0C+R8MHwX3oaMYd6tMOqZbNX7njHwUP0GDH9FvkCCyEihPj3yuQ3Qz3z0Q5061ODqnxfMBaJX2ETzRx0tBTzJesf9AdvqGiKlDnJjzkOLr4yCmGHk7igXfB4ehQ0Y+Xk0vmex54gUunLPUdaPENdpC+pB11HDaJyltp2FCBt1ZD7aCNaeYATv+ltGz2lWoELAQOI5VbsKml3u3K5UjJPvFW7LP9BWf8/kO/y97bE90ltbBaqOooF5b2QUhTAzuNs=
       ```
+
+
+## Inter-Communication between Services:
+- There are 2 ways of communication between microservices:
+  - Synchronous Communication
+    - One by One request will be handled and others have to wait until current one is handling.
+  - Asynchronous Communication
+    - Multiple requests will be handled at once.
+### Synchronous Communication
+- There are different ways of implementing Synchronous Communication and they are:
+  - Rest Template
+  - OpenFeign
+  - RestClient
+  - WebClient
+  - HTTP Interfaces
+- Evolution of Synchronous Communication:
+  - Early Days: Manual HTTP Calls & Low-Level Clients
+  - Introduction of Client-Side Load Balancing & Service Discovery
+  - Declarative HTTP Clients: OpenFeign & Beyond
+  - Other HTTP Clients
+
+### Asynchronous Communication
