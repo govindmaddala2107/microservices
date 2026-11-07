@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/h2_jpa/pom.xml" />
         <option value="$PROJECT_DIR$/configserver/pom.xml" />
+        <option value="$PROJECT_DIR$/inter_services/consumer/pom.xml" />
       </list>
     </option>
   </component>

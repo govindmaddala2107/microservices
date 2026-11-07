@@ -1,12 +1,11 @@
-package com.gomad.consumer.rest_template;
+package com.gomad.consumer.rest_client;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestTemplate;
 
 @Configuration
-public class RestTemplateConfig {
+public class RestClientConfig {
 
     @Bean
     public RestClient restClient() {
