@@ -978,7 +978,7 @@ Receive Plain Text Configuration
       ```
 
 
-## Inter-Communication between Services:
+## Inter-Communication between Services: [Refer inter_services]
 - There are 2 ways of communication between microservices:
   - Synchronous Communication
     - One by One request will be handled and others have to wait until current one is handling.
@@ -1038,6 +1038,74 @@ Receive Plain Text Configuration
           .retrieve()
           .bodyToMono(String.class);
       ```
+    - Our setup
+      ```java
+      <!-- WebClientConfig -->
+      @Configuration
+      public class WebClientConfig {
+
+          @Bean
+          public WebClient webClient(WebClient.Builder builder){
+              return builder.baseUrl("http://localhost:8081").build();
+          }
+      }
+
+
+      <!-- ProviderWebClient -->
+      @Service
+      @RequiredArgsConstructor
+      public class ProviderWebClient {
+
+          private final WebClient webClient;
+
+          public Mono<String> getInstanceInfo() {
+              return webClient.get()
+                      .uri("/instance-info")
+                      .retrieve()
+                      .bodyToMono(String.class);
+          }
+      }
+
+      <!-- WebClientController -->
+      @RestController
+      @RequiredArgsConstructor
+      @RequestMapping("/api/web-client")
+      public class WebClientController {
+
+          private final ProviderWebClient providerWebClient;
+
+          @GetMapping
+          public Mono<String> getInstanceInfo(){
+              return providerWebClient.getInstanceInfo();
+          }
+
+          @GetMapping("/basic")
+          public Mono<String> getInstanceInfoBasic(){
+              WebClient webClient = WebClient.create();
+              return webClient.get()
+                      .uri("http://localhost:8081/instance-info")
+                      .retrieve()
+                      .bodyToMono(String.class);
+          }
+      }
+
+
+      <!-- -----[Provider in another repo]----- -->
+      @RestController
+      public class InstanceController {
+
+          @Value("${server.port}")
+          private String port;
+
+          private final String instanceId = java.util.UUID.randomUUID().toString();
+
+          @GetMapping("/instance-info")
+          public String getInstanceInfo(){
+              System.out.printf("Request received at instance running on port: %s\n", port);
+              return String.format("Instance served by PORT: %s. Instance ID: %s", port, instanceId);
+          }
+      }
+      ```
   - **RestClient**
     - Introduced in Spring 6 and is modern alternative to RestTemplate.
     - Provides a fluent API similar to WebClient but remains synchronous.
@@ -1060,3 +1128,90 @@ Receive Plain Text Configuration
       ```
   
 ### Asynchronous Communication
+  - **WebClient**
+    - Introduced in Spring 5 WebFlux for asynchronous operations.
+    - Supports reactive programming and integrates well with Mono and Flux
+    - Ideal for high-throughput applications.
+      ```java
+      WebClient webClient = WebClient.create("http://example.com");
+      Mono<String> response = webClient.get()
+          .uri("/api/resource")
+          .retrieve()
+          .bodyToMono(String.class);
+      ```
+
+## Service Registry:
+### Code changes:
+  #### Server
+  - Dependencies needed:
+    - Eureka Server Spring Cloud Discovery
+      ```xml
+      <!-- Parameter -->
+      <spring-cloud.version>2025.1.4</spring-cloud.version>
+
+      <!-- Dependency -->
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+      </dependency>
+
+
+      <!-- dependencyManagement -->
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>${spring-cloud.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+      ```
+  - In Main class, add **@EnableEurekaServer** annotation on top of class.
+  - In application.yml:
+    ```yaml
+    spring:
+      application:
+        name: eureka
+
+    server:
+      port: 8761
+
+    eureka:
+      client:
+        register-with-eureka: false
+        fetch-registry: false
+    ```
+  - [Eureka Page](http://localhost:8761/)
+    ![Euraka Home Page](images/EurekaHomePage.png)
+  
+  #### Client
+  - Dependencies needed:
+    - Eureka Discovery Client Spring Cloud Discovery
+      - A REST based service for locating services for the purpose of load balancing and failover of middle-tier servers.
+      ```xml
+      <!-- Parameter -->
+      <spring-cloud.version>2025.1.4</spring-cloud.version>
+
+      <!-- Dependency -->
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+      </dependency>
+
+
+      <!-- dependencyManagement -->
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dependencies</artifactId>
+            <version>${spring-cloud.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+      ```
