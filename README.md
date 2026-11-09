@@ -1610,7 +1610,232 @@ Receive Plain Text Configuration
         eviction-interval-timer-in-ms: 60000
         expected-client-renewal-interval-seconds: 30
     ```
-
+  - [Eureka-App](http://localhost:8761/eureka/apps) will give response of all apps like
+    ```xml
+    <applications>
+      <versions__delta>1</versions__delta>
+      <apps__hashcode>UP_3_</apps__hashcode>
+      <application>
+        <name>PRODUCER</name>
+        <instance>
+          <instanceId>LIN-5CD537FZJK:producer:8081</instanceId>
+          <hostName>LIN-5CD537FZJK</hostName>
+          <app>PRODUCER</app>
+          <ipAddr>10.211.224.64</ipAddr>
+          <status>UP</status>
+          <overriddenstatus>UNKNOWN</overriddenstatus>
+          <port enabled="true">8081</port>
+          <securePort enabled="false">443</securePort>
+          <countryId>1</countryId>
+          <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+            <name>MyOwn</name>
+          </dataCenterInfo>
+          <leaseInfo>
+            <renewalIntervalInSecs>30</renewalIntervalInSecs>
+            <durationInSecs>90</durationInSecs>
+            <registrationTimestamp>1794124296498</registrationTimestamp>
+            <lastRenewalTimestamp>1794208397833</lastRenewalTimestamp>
+            <evictionTimestamp>0</evictionTimestamp>
+            <serviceUpTimestamp>1794124295802</serviceUpTimestamp>
+          </leaseInfo>
+          <metadata>
+            <management.port>8081</management.port>
+          </metadata>
+          <homePageUrl>http://LIN-5CD537FZJK:8081/</homePageUrl>
+          <statusPageUrl>http://LIN-5CD537FZJK:8081/actuator/info</statusPageUrl>
+          <healthCheckUrl>http://LIN-5CD537FZJK:8081/actuator/health</healthCheckUrl>
+          <vipAddress>producer</vipAddress>
+          <secureVipAddress>producer</secureVipAddress>
+          <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+          <lastUpdatedTimestamp>1794124296498</lastUpdatedTimestamp>
+          <lastDirtyTimestamp>1794124295670</lastDirtyTimestamp>
+          <actionType>ADDED</actionType>
+        </instance>
+        <instance>
+          <instanceId>LIN-5CD537FZJK:producer:8082</instanceId>
+          <hostName>LIN-5CD537FZJK</hostName>
+          <app>PRODUCER</app>
+          <ipAddr>10.211.224.64</ipAddr>
+          <status>UP</status>
+          <overriddenstatus>UNKNOWN</overriddenstatus>
+          <port enabled="true">8082</port>
+          <securePort enabled="false">443</securePort>
+          <countryId>1</countryId>
+          <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+            <name>MyOwn</name>
+          </dataCenterInfo>
+          <leaseInfo>
+            <renewalIntervalInSecs>30</renewalIntervalInSecs>
+            <durationInSecs>90</durationInSecs>
+            <registrationTimestamp>1794124304544</registrationTimestamp>
+            <lastRenewalTimestamp>1794208382874</lastRenewalTimestamp>
+            <evictionTimestamp>0</evictionTimestamp>
+            <serviceUpTimestamp>1794124304019</serviceUpTimestamp>
+          </leaseInfo>
+          <metadata>
+            <management.port>8082</management.port>
+          </metadata>
+          <homePageUrl>http://LIN-5CD537FZJK:8082/</homePageUrl>
+          <statusPageUrl>http://LIN-5CD537FZJK:8082/actuator/info</statusPageUrl>
+          <healthCheckUrl>http://LIN-5CD537FZJK:8082/actuator/health</healthCheckUrl>
+          <vipAddress>producer</vipAddress>
+          <secureVipAddress>producer</secureVipAddress>
+          <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+          <lastUpdatedTimestamp>1794124304544</lastUpdatedTimestamp>
+          <lastDirtyTimestamp>1794124303968</lastDirtyTimestamp>
+          <actionType>ADDED</actionType>
+        </instance>
+      </application>
+      <application>
+        <name>CONSUMER</name>
+        <instance>
+          <instanceId>LIN-5CD537FZJK:consumer</instanceId>
+          <hostName>LIN-5CD537FZJK</hostName>
+          <app>CONSUMER</app>
+          <ipAddr>10.211.224.64</ipAddr>
+          <status>UP</status>
+          <overriddenstatus>UNKNOWN</overriddenstatus>
+          <port enabled="true">8080</port>
+          <securePort enabled="false">443</securePort>
+          <countryId>1</countryId>
+          <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+            <name>MyOwn</name>
+          </dataCenterInfo>
+          <leaseInfo>
+            <renewalIntervalInSecs>30</renewalIntervalInSecs>
+            <durationInSecs>90</durationInSecs>
+            <registrationTimestamp>1794201971349</registrationTimestamp>
+            <lastRenewalTimestamp>1794208396942</lastRenewalTimestamp>
+            <evictionTimestamp>0</evictionTimestamp>
+            <serviceUpTimestamp>1794201970832</serviceUpTimestamp>
+          </leaseInfo>
+          <metadata>
+            <management.port>8080</management.port>
+          </metadata>
+          <homePageUrl>http://LIN-5CD537FZJK:8080/</homePageUrl>
+          <statusPageUrl>http://LIN-5CD537FZJK:8080/actuator/info</statusPageUrl>
+          <healthCheckUrl>http://LIN-5CD537FZJK:8080/actuator/health</healthCheckUrl>
+          <vipAddress>consumer</vipAddress>
+          <secureVipAddress>consumer</secureVipAddress>
+          <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+          <lastUpdatedTimestamp>1794201971349</lastUpdatedTimestamp>
+          <lastDirtyTimestamp>1794201970769</lastDirtyTimestamp>
+          <actionType>ADDED</actionType>
+        </instance>
+      </application>
+    </applications>
+    ```
+  - [Eureka-App-Producer](http://localhost:8761/eureka/apps/PRODUCER) will give response of Producer app(s) like
+    ```xml
+    <application>
+      <name>PRODUCER</name>
+      <instance>
+        <instanceId>LIN-5CD537FZJK:producer:8081</instanceId>
+        <hostName>LIN-5CD537FZJK</hostName>
+        <app>PRODUCER</app>
+        <ipAddr>10.211.224.64</ipAddr>
+        <status>UP</status>
+        <overriddenstatus>UNKNOWN</overriddenstatus>
+        <port enabled="true">8081</port>
+        <securePort enabled="false">443</securePort>
+        <countryId>1</countryId>
+        <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+          <name>MyOwn</name>
+        </dataCenterInfo>
+        <leaseInfo>
+          <renewalIntervalInSecs>30</renewalIntervalInSecs>
+          <durationInSecs>90</durationInSecs>
+          <registrationTimestamp>1794124296498</registrationTimestamp>
+          <lastRenewalTimestamp>1794208547974</lastRenewalTimestamp>
+          <evictionTimestamp>0</evictionTimestamp>
+          <serviceUpTimestamp>1794124295802</serviceUpTimestamp>
+        </leaseInfo>
+        <metadata>
+          <management.port>8081</management.port>
+        </metadata>
+        <homePageUrl>http://LIN-5CD537FZJK:8081/</homePageUrl>
+        <statusPageUrl>http://LIN-5CD537FZJK:8081/actuator/info</statusPageUrl>
+        <healthCheckUrl>http://LIN-5CD537FZJK:8081/actuator/health</healthCheckUrl>
+        <vipAddress>producer</vipAddress>
+        <secureVipAddress>producer</secureVipAddress>
+        <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+        <lastUpdatedTimestamp>1794124296498</lastUpdatedTimestamp>
+        <lastDirtyTimestamp>1794124295670</lastDirtyTimestamp>
+        <actionType>ADDED</actionType>
+      </instance>
+      <instance>
+        <instanceId>LIN-5CD537FZJK:producer:8082</instanceId>
+        <hostName>LIN-5CD537FZJK</hostName>
+        <app>PRODUCER</app>
+        <ipAddr>10.211.224.64</ipAddr>
+        <status>UP</status>
+        <overriddenstatus>UNKNOWN</overriddenstatus>
+        <port enabled="true">8082</port>
+        <securePort enabled="false">443</securePort>
+        <countryId>1</countryId>
+        <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+          <name>MyOwn</name>
+        </dataCenterInfo>
+        <leaseInfo>
+          <renewalIntervalInSecs>30</renewalIntervalInSecs>
+          <durationInSecs>90</durationInSecs>
+          <registrationTimestamp>1794124304544</registrationTimestamp>
+          <lastRenewalTimestamp>1794208532999</lastRenewalTimestamp>
+          <evictionTimestamp>0</evictionTimestamp>
+          <serviceUpTimestamp>1794124304019</serviceUpTimestamp>
+        </leaseInfo>
+        <metadata>
+          <management.port>8082</management.port>
+        </metadata>
+        <homePageUrl>http://LIN-5CD537FZJK:8082/</homePageUrl>
+        <statusPageUrl>http://LIN-5CD537FZJK:8082/actuator/info</statusPageUrl>
+        <healthCheckUrl>http://LIN-5CD537FZJK:8082/actuator/health</healthCheckUrl>
+        <vipAddress>producer</vipAddress>
+        <secureVipAddress>producer</secureVipAddress>
+        <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+        <lastUpdatedTimestamp>1794124304544</lastUpdatedTimestamp>
+        <lastDirtyTimestamp>1794124303968</lastDirtyTimestamp>
+        <actionType>ADDED</actionType>
+      </instance>
+    </application>
+    ```
+  - [Eureka-App-Producer-InstanceID](http://localhost:8761/eureka/apps/PRODUCER/LIN-5CD537FZJK:producer:8081) will give response of Producer app with Instance ID = LIN-5CD537FZJK:producer:8081 like
+    ```xml
+    <instance>
+      <instanceId>LIN-5CD537FZJK:producer:8081</instanceId>
+      <hostName>LIN-5CD537FZJK</hostName>
+      <app>PRODUCER</app>
+      <ipAddr>10.211.224.64</ipAddr>
+      <status>UP</status>
+      <overriddenstatus>UNKNOWN</overriddenstatus>
+      <port enabled="true">8081</port>
+      <securePort enabled="false">443</securePort>
+      <countryId>1</countryId>
+      <dataCenterInfo class="com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo">
+        <name>MyOwn</name>
+      </dataCenterInfo>
+      <leaseInfo>
+        <renewalIntervalInSecs>30</renewalIntervalInSecs>
+        <durationInSecs>90</durationInSecs>
+        <registrationTimestamp>1794124296498</registrationTimestamp>
+        <lastRenewalTimestamp>1794208788204</lastRenewalTimestamp>
+        <evictionTimestamp>0</evictionTimestamp>
+        <serviceUpTimestamp>1794124295802</serviceUpTimestamp>
+      </leaseInfo>
+      <metadata>
+        <management.port>8081</management.port>
+      </metadata>
+      <homePageUrl>http://LIN-5CD537FZJK:8081/</homePageUrl>
+      <statusPageUrl>http://LIN-5CD537FZJK:8081/actuator/info</statusPageUrl>
+      <healthCheckUrl>http://LIN-5CD537FZJK:8081/actuator/health</healthCheckUrl>
+      <vipAddress>producer</vipAddress>
+      <secureVipAddress>producer</secureVipAddress>
+      <isCoordinatingDiscoveryServer>false</isCoordinatingDiscoveryServer>
+      <lastUpdatedTimestamp>1794124296498</lastUpdatedTimestamp>
+      <lastDirtyTimestamp>1794124295670</lastDirtyTimestamp>
+      <actionType>ADDED</actionType>
+    </instance>
+    ```
 
 
 
