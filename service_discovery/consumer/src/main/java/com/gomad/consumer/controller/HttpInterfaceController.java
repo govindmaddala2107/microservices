@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/http-interface")
-public class HttpClientController {
+public class HttpInterfaceController {
 
     private final ProviderHttpInterface providerHttpInterface;
     @GetMapping

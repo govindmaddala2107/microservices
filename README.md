@@ -1215,3 +1215,248 @@ Receive Plain Text Configuration
         </dependencies>
       </dependencyManagement>
       ```
+
+### Loadbalanced:
+- Let's say there are 3 servers of producers, then in normal service registry, it will always hit same server but we annotated with **@LoadBalanced**, then in round-robin approach, load will be balanced equally.
+- With **LoadBalanced** annotation, now we don't need to use full urls also:
+  ```http://localhost:8081/instance-info``` will become like ```http://PRODUCER/instance-info```. With this, we don't need which service is running on which port. All does matter is on which name, it got registered in eureka server.
+- Here I have created Producer extra server on 8082, so now it is available on 8081 and 8082.
+  ![alt text](images/CreateExtraServer.png)
+- With old code setup, it will always hit either 8081 or 8082 but not like 8081 <-> 8082.
+- #### Code setup for LoadBalanced:
+  - ##### Rest Client
+    ```java
+    <!-- Config Setup -->
+
+    @Configuration
+    public class RestClientConfig {
+
+        /**
+        * Creates a load-balanced builder for requests addressed by Eureka service name.
+        */
+        @Bean
+        @LoadBalanced
+        @Scope("prototype")
+        public RestClient.Builder loadBalancedRestClientBuilder() {
+            return RestClient.builder();
+        }
+
+        /**
+        * Provides the default non-load-balanced builder for framework HTTP clients, including Eureka.
+        */
+        @Bean
+        @Primary
+        @Scope("prototype")
+        public RestClient.Builder restClientBuilder() {
+            return RestClient.builder();
+        }
+
+        /**
+        * Builds a client that resolves the PRODUCER service through Eureka and the load balancer.
+        */
+        @Bean
+        public RestClient restClient(@LoadBalanced RestClient.Builder builder) {
+            return builder.baseUrl("http://PRODUCER").build();
+        }
+    }
+
+    <!-- Service Setup -->
+
+    @Service
+    @RequiredArgsConstructor
+    public class ProviderRestClient {
+
+        private final RestClient restClient;
+
+        public String getInstanceInfo(){
+    //        String url = "http://localhost:8081/instance-info";
+            return restClient.get().uri("/instance-info")
+                    .retrieve()
+                    .body(String.class);
+        }
+    }
+
+    <!-- Controller Setup: No change -->
+
+    @RestController
+    @RequestMapping("/api/rest-client")
+    @RequiredArgsConstructor
+    public class RestClientController {
+
+        private final ProviderRestClient providerRestClient;
+
+        @GetMapping
+        public String getInstanceInfo(){
+            return providerRestClient.getInstanceInfo();
+        }
+    }
+    ```
+    [RestClient](http://localhost:8080/api/rest-client) response will be like:
+    ```text
+    Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+    Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+    Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+    Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+    ```
+
+- ##### Feign Client:
+  - @FeignClient(name = "producer") is enough, it will automatically load balance.
+  ```java
+  <!-- Config Setup -->
+  //@FeignClient(name = "Provider-Service", url = "http://localhost:8081")
+  @FeignClient(name = "producer")
+  public interface ProviderFeignClient {
+
+      @GetMapping("/instance-info")
+      String getInstanceInfo();
+  }
+
+  <!-- Controller Setup: No Change -->
+  @RestController
+  @RequestMapping("/api/feign")
+  @RequiredArgsConstructor
+  public class FeignController {
+
+      private final ProviderFeignClient providerFeignClient;
+
+      @GetMapping
+      public String getInstanceInfo(){
+          return providerFeignClient.getInstanceInfo();
+      }
+  }
+  ```
+  
+  [FeignClient](http://localhost:8080/api/feign) response will be like:
+  ```text
+  Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+  Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+  Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+  Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+  ```
+
+- ##### Web Client:
+  ```java
+  <!-- Configuration Setup: We have to Load balance Builder and has to send as param -->
+  @Configuration
+  public class WebClientConfig {
+
+      @Bean
+      @LoadBalanced
+      public WebClient.Builder webClientBuilder() {
+          return WebClient.builder();
+      }
+
+      @Bean
+      public WebClient webClient(WebClient.Builder builder) {
+          return builder.baseUrl("http://PRODUCER")
+                  .build();
+      }
+  }
+
+  <!-- Service Setup -->
+  @Service
+  @RequiredArgsConstructor
+  public class ProviderWebClient {
+
+      private final WebClient webClient;
+
+      public Mono<String> getInstanceInfo() {
+          return webClient.get()
+                  .uri("/instance-info")
+                  .retrieve()
+                  .bodyToMono(String.class);
+      }
+  }
+
+  <!-- Controller Setup: No change -->
+  @RestController
+  @RequiredArgsConstructor
+  @RequestMapping("/api/web-client")
+  public class WebClientController {
+
+      private final ProviderWebClient providerWebClient;
+
+      @GetMapping
+      public Mono<String> getInstanceInfo(){
+          return providerWebClient.getInstanceInfo();
+      }
+  }
+  ```
+  [WebClient](http://localhost:8080/api/web-client) response will be like:
+  ```text
+  Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+  Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+  Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+  Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+  ```
+
+- ##### Http Interface:
+  - Here I am just doing for WebClient one:
+  - Previous Code is
+    ```java
+    @Configuration
+    @RequiredArgsConstructor
+    public class HttpInterfaceConfig {
+
+        private static final String URL = "http://localhost:8081";
+
+        @Bean
+        public ProviderHttpInterface webClientHttpInterface() {
+            // or WebClient...
+            WebClient webClient = WebClient.create(URL);
+            WebClientAdapter adapter = WebClientAdapter.create(webClient);
+            HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
+            ProviderHttpInterface service = factory.createClient(ProviderHttpInterface.class);
+            return service;
+        }
+    }
+    ```
+  - New Code is
+    ```java
+    <!-- Configuration Setup: Here WebClient is as same as "WebClientConfig" setup, either use that code or keep same code setup in this config but do not keep same code in both WebClient and HttpConfig because it will create 2 beans and server will crash. -->
+    
+    @Configuration
+    @RequiredArgsConstructor
+    public class HttpInterfaceConfig {
+
+      private final WebClient webClient;
+
+      @Bean
+      public ProviderHttpInterface webClientHttpInterfaceLoadBalanced() {
+          WebClientAdapter adapter = WebClientAdapter.create(webClient);
+          HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter).build();
+          ProviderHttpInterface service = factory.createClient(ProviderHttpInterface.class);
+          return service;
+      }
+    }
+
+    <!-- ProviderHttpInterface: No change -->
+    @HttpExchange
+    public interface ProviderHttpInterface {
+
+        @GetExchange("/instance-info")
+        String getInstanceInfo();
+    }
+
+    <!-- HttpInterfaceController: No changes -->
+    @RestController
+    @RequiredArgsConstructor
+    @RequestMapping("/api/http-interface")
+    public class HttpInterfaceController {
+
+        private final ProviderHttpInterface providerHttpInterface;
+        @GetMapping
+        public String getInstanceInfo(){
+            return providerHttpInterface.getInstanceInfo();
+        }
+    }
+    ```
+    [Http-interface](http://localhost:8080/api/http-interface) response will be like:
+     ```text
+    Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+    Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+    Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
+    Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
+    ```
+    
+
