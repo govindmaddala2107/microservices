@@ -1458,5 +1458,159 @@ Receive Plain Text Configuration
     Instance served by PORT: 8081. Instance ID: 01f5d81e-193a-4ec2-9795-c850ed55b554
     Instance served by PORT: 8082. Instance ID: 259562a8-2ebf-47f2-b8e9-8d0897aeef52
     ```
-    
+
+### Eureka Self-Preservation Mode:
+- **What is Self-Preservation?**
+  - Self-Preservation is a safety mechanism in Netflix Eureka Server that prevents Eureka from accidentally removing healthy service instances during network issues, temporary outages, or infrastructure problems.
+
+  - Without self-preservation, Eureka may think services are down simply because heartbeats are not reaching the server and remove them from the registry.
+
+- **Why does Eureka have Self-Preservation Mode?**
+  - Self-Preservation is a protection mechanism in Eureka Server that prevents accidental removal of healthy service instances when heartbeats are missed due to network failures or infrastructure issues. 
+  - When received heartbeats fall below a configurable threshold (default 85% of expected renewals), Eureka stops evicting instances to maintain service availability until normal heartbeat traffic resumes.
+- **Why is it Needed?**
+  - Consider this scenario:
+    ```text
+    Service A  ----X----> Eureka
+    Service B  ----X----> Eureka
+    Service C  ----X----> Eureka
+    ```
+  - A network issue prevents heartbeat messages from reaching Eureka.
+
+  - **Without Self-Preservation**
+
+    - Eureka receives no heartbeats.
+    - Eureka assumes services are down.
+    - Instances are evicted from the registry.
+    - Clients can no longer discover services.
+    - Entire microservice ecosystem may become unavailable.
+
+  - **With Self-Preservation**
+    - Eureka detects abnormal heartbeat loss.
+    - Eureka stops evicting instances.
+    - Existing registrations remain.
+    - Services continue to communicate once the network recovers.
+- **How It Works?**
+  - Each client sends periodic heartbeats. Example:
+    ```yaml
+    eureka:
+      instance:
+        lease-renewal-interval-in-seconds: 30
+    ```
+  - Suppose
+    ```text
+    100 instances
+    Heartbeat every 30 seconds
+    ```
+    - Expected renewals per minute:
+      ```text
+      100 × (60 / 30)
+      = 200 heartbeats/minute
+      ```
+    - If Eureka receives less than:
+      ```text
+      200 × 0.85 = 170 heartbeats/minute
+      ```
+    then it enters self-preservation mode.
+
+- #### Configurations for Self-Preservation:
+  - Overall Configuration settings:
+    ```yaml
+    eureka:
+      server:
+        enable-self-preservation: true # If disabled, Eureka will evict instances immediately when heartbeats drop, which can be risky in unstable networks.
+        self-preservation-percentage: 0.85 # This threshold is used to calculate the expected number of heartbeats per minute.
+        eviction-interval-timer-in-ms: 60000 # A scheduler runs at this interval (every 60 seconds) to check for and evict expired instances based on the lease-expiration-duration setting. i.e How often Eureka checks for expired instances and removes them.
+        renewal-threshold-update-interval-ms: 15*60*1000 # Every 15 minutes, Eureka recalculates the expected heartbeats per minute based on the current registry size. i.e How often Eureka recalculates the expected heartbeat threshold used for self-preservation mode.
+
+      instance:
+        lease-renewal-interval-in-seconds: 60 #This sets the interval at which a service instance sends a heartbeat (renewal) to the Eureka server. Spring Cloud Netflix commonly defaults this to 30 seconds unless overridden.
+    ```
+  - Eureka Client Settings [Microservice Side]:
+    - Yaml changes:
+      ```yaml
+      eureka:
+        client:
+          # Registers this service with Eureka Server
+          register-with-eureka: true
+
+          # Downloads registry information from Eureka
+          fetch-registry: true
+
+        instance:
+          # Sends heartbeat every 30 seconds
+          lease-renewal-interval-in-seconds: 30
+
+          # Instance is evicted if no heartbeat for 90 seconds
+          lease-expiration-duration-in-seconds: 90
+
+          # Service hostname: Auto-detected 
+          # hostname: ${HOSTNAME:localhost}
+          hostname: localhost
+          
+      ```
+    - Flow Chart:
+      ```text
+      Heartbeat every 30 sec
+              ↓
+      No heartbeat received
+              ↓
+      After 90 sec lease expires
+              ↓
+      Eureka marks instance as expired
+              ↓
+      Eviction task removes instance
+      ```
+    - Rule of thumb:
+      ```
+      lease-expiration-duration > lease-renewal-interval
+
+      Example:
+      30 sec renewal
+      90 sec expiration  ✅ Recommended
+      ```
+  - Eureka Server Settings:
+    ```yaml
+    eureka:
+      server:
+        # Prevents accidental mass removal of instances during network failures.
+        enable-self-preservation: true
+
+        # Cleanup task runs every 60 seconds
+        eviction-interval-timer-in-ms: 60000
+
+        # Expected heartbeat interval from clients
+        expected-client-renewal-interval-seconds: 30
+
+      instance:
+        # Register using hostname instead of IP
+        prefer-ip-address: false
+
+        # Unique service instance identifier
+        # instance-id: Auto-generated
+        instance-id: ${spring.application.name}:${random.value}
+    ```
+  - Common Production Configuration:
+    ```yaml
+    spring:
+      application:
+        name: payment-service
+
+    eureka:
+      instance:
+        prefer-ip-address: true
+        instance-id: ${spring.application.name}:${server.port}
+
+      client:
+        register-with-eureka: true
+        fetch-registry: true
+
+      server:
+        enable-self-preservation: true
+        eviction-interval-timer-in-ms: 60000
+        expected-client-renewal-interval-seconds: 30
+    ```
+
+
+
 
