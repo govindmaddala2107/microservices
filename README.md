@@ -743,11 +743,9 @@ Receive Plain Text Configuration
 
       ```text
       Plain Text Password
-              |
-              v
+              ↓
       Public Key
-              |
-              v
+              ↓
       Encrypted Value ({cipher}...)
       ```
 
@@ -758,11 +756,9 @@ Receive Plain Text Configuration
     - When a client application requests configuration from the Config Server, the server uses the **private key** from the keystore to decrypt the encrypted property before returning it.
       ```text
       Encrypted Value ({cipher}...)
-                |
-                v
+                ↓
             Private Key
-                |
-                v
+                ↓
           Plain Text Value
       ```
 
@@ -1932,8 +1928,84 @@ Receive Plain Text Configuration
 - Better Debugging
 - Scaling Efficiently
 
+## Centralised Logging:
+- ### Grafana Loki Architecture
+  - Grafana Loki is used to collect, store, and visualize application logs from multiple services in one centralized location.
 
-## Another Topic
+  - **Architecture Components:**
+    1. **Application:** Spring Boot microservices generate application logs.
+    2. **Promtail / Grafana Alloy:** Collects logs from application log files and forwards them to Loki.
+    3. **Loki:** Stores and indexes log labels, making it easy to search and filter logs.
+    4. **Grafana:** Provides a dashboard to view, search, and analyze logs using LogQL.
+
+- ### Logging Flow
+  1. Applications generate logs.
+  2. Log collectors read logs from application files.
+  3. Logs are forwarded to Loki.
+  4. Loki stores the logs.
+  5. Grafana connects to Loki as a data source.
+  6. Developers use Grafana dashboards and LogQL queries to search and monitor logs.
+
+- ### Architecture Overview
+  ```text
+  Spring Boot Microservices
+            ↓
+      Application Logs
+            ↓
+    Grafana Alloy
+    (Log Collector)
+            ↓
+        Loki
+    (Log Storage)
+            ↓
+        Grafana
+    (Visualization)
+            ↓
+      Log Dashboards
+  ```
+- ### Benefits
+
+  - Centralized logging from multiple microservices.
+  - Easy searching and filtering of logs.
+  - Faster debugging and issue tracking.
+  - Monitoring application errors in one place.
+  - Reduced need to access individual service logs.
+
+- ### Local Setup
+  - Follow the official [Grafana Loki Quick Start Guide](https://grafana.com/docs/loki/latest/get-started/quick-start/quick-start/) to set up Loki and Grafana on the local machine.
+  - Configure the log collector to forward application logs to Loki.
+  - Add Loki as a data source in Grafana.
+  - Use LogQL to query and visualize application logs.
+  - If you want to experiment with Loki, you can run Loki locally using the Docker Compose file that ships with Loki.
+  - It runs Loki in the simple scalable deployment mode and includes a sample application to generate logs.
+
+- ### Run Loki locally
+  - The Docker Compose configuration runs the following components, each in its own container:
+
+    - **flog**: which generates log lines. flog is a log generator for common log formats.
+
+    - **Grafana Alloy**: which scrapes the log lines from flog, and pushes them to Loki through the gateway. It runs on **http://localhost:12345/**
+      ![GrafanaAlloy](images/GrafanaAlloy.png)
+    - **Gateway (nginx)** which receives requests and redirects them to the appropriate container based on the request’s URL.
+
+    - **Loki read component**: which runs a Query Frontend and a Querier.
+
+    - **Loki write component**: which runs a Distributor and an Ingester.
+
+    - **Loki backend component**: which runs an Index Gateway, Compactor, Ruler, Bloom Planner (experimental), Bloom Builder (experimental), and Bloom Gateway (experimental).
+
+    - **Minio**: which Loki uses to store its index and chunks.
+
+    - **Grafana**: which provides visualization of the log lines captured within Loki. Grafana cluster runs on **http://localhost:3000/**
+    ![Grafana Cluster](images/GrafanaCluster.png)
+    - **Flow Chart**
+    ![GrafanaFlowChart](images/GrafanaFlowChart.png)
+- After running all commands from setup, in docker, it will be like:
+  ![DockerImages](images/LokiDockerSetup.png)
+
+- Already Docker Compose file is there, then run like
+  ```cd C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-loki; docker compose up -d```
+  ## Another Topic
 
 
 
