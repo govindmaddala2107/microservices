@@ -777,20 +777,15 @@ Receive Plain Text Configuration
   - ###### Flow
     ```text
     Client Secret
-        |
-        v
+        ↓
     Encrypt (Public Key)
-        |
-        v
+        ↓
     Store in Git Repository
-        |
-        v
+        ↓
     Config Server Reads Value
-        |
-        v
+        ↓
     Decrypt (Private Key)
-        |
-        v
+        ↓
     Send Plain Text to Client Application
     ```
 - ##### How RSA is different from AES ?
@@ -1836,6 +1831,109 @@ Receive Plain Text Configuration
       <actionType>ADDED</actionType>
     </instance>
     ```
+
+
+
+
+## Observability
+- Observability is the ability to understand the internal state of a system by analyzing the data it produces like: logs, metrics and traces.
+- Observability ensure that a microservices system **health**, **fast** and **reliable**.
+- **Monitoring vs Observability**
+  | Faeture | Monitoring | Observability |
+  | --- | --- | --- |
+  |Definition| Watching system health & performance| Understanding why things happen |
+  | Approach| Collect predefined data| Explores unknown issues |
+  | Example| Checking if a server is running| Debugging why a request failed|
+- Monitoring is like a smoke detector whereas Observability is like an investigation.
+#### Three Pillars of  Observability:
+  - Logs
+  - Metrics and 
+  - Traces
+
+##### Logs: What Happened
+- Logs are text-based records of events happening in a system.
+- Tools for logs:
+  - ELK Stack (Elasticsearch, Logstash, Kibana)
+  - Splunk
+- Example:
+  - In a food delivery app, a log might look like this:
+    ```text
+    [2025-01-29 12:00:15] INFO OrderService: Order ID 1234 placed successfully.
+
+    [2025-01-29 12:00:20] ERROR PaymentService: Payment failed for Order ID 1234.
+    ```
+- ###### Logging in Mircoservices
+  - Why they are important:
+    - debuggin issues
+    - tracking user activities
+    - performance monitoring
+    - security auditing
+  - Types of Logging:
+    - **Normal Logging**
+      - Each microservice writes logs in separate files, but searching for an issue requires checking logs in multiple places.
+    - **Centralized Logging**
+      - Here we collect logs from all services into one central system like:
+        - **Elastic Search** + **Kibana** (ELK Stack)
+        - **Loki** + **Grafana**
+  - Best Practices in Logging:
+    - Always use structured Logging:
+      - Structured logs are easier to search in centralized logging systems.
+    - Use the right log level:
+      - use **INFO** for general events (User login, Order placed).
+      - use **DEBUG** for developement testing.
+      - use **ERROR** only for real failures.
+    - Filter Sensitive Data in Logs:
+      - Never expose sensitive data in logs.
+  - Understanding Logging in Springboot
+    ```text
+    [Your Code] ---------------> logger.info("Message");
+        ↓
+    [SLF4J (Logging Facade)] --> Acts as a middleman
+        ↓
+    [Logging Framework] -------> Logback (Default), Log4j, JUL
+        ↓
+    [Log Output] --------------> Console, File etc.
+    ```
+    | Component | Role |
+    | --- | --- |
+    | SLF4J (Simple Logging Facade for Java) | **Interface (middleman)** for logging. It forwards logs to the actual logging framework. |
+    |**Logback** (Default in Spring Boot)| **Processes logs**, applies formatting, filtering, and decides where to send logs. |
+    |**Log Output** | The final destination for logs (**Console, File, Database, etc.**).|
+    
+    - jbjhbj
+##### Metrics: How is the System Performing
+- Metrics are numerical values that help track system performance over time.
+- Tools for metrics are:
+  - Prometheus + Grafana
+  - Datadog
+  - New Relic
+- Example:
+  - In a video streaming app, some important metrics could be:
+    - CPU usage: 80% (is system overloaded?)
+    - Response Time: 500ms (Are users experiencing delays?)
+    - Error rate: 5% (Are too many requests failing?)
+
+##### Traces: How Requests Flow Through the System
+- Traces track how a request moves across multiple microservices.
+- Tools for Traces:
+  - Zipkin
+  - Jaegar
+  - Open Telemetry
+- Example:
+  - In a ride-sharing app (like UBER), when a user books a ride, the request passes through multiple services:
+    - **User Service** (Verify User)
+    - **Ride Service** (Find Available drivers)
+    - **Payment Service** (Process Payment)
+    - **Notification Service** (Send Confirmation)
+
+#### Why Observability is critical in Microservices:
+- Finding Problems faster
+- Improving Performance: With Metrics we can deal this
+- Better Debugging
+- Scaling Efficiently
+
+
+## Another Topic
 
 
 
