@@ -11,7 +11,8 @@ public class ProviderRestClient {
     private final RestClient restClient;
 
     public String getInstanceInfo(){
-        return restClient.get().uri("http://localhost:8081/instance-info")
+//        String url = "http://localhost:8081/instance-info";
+        return restClient.get().uri("/instance-info")
                 .retrieve()
                 .body(String.class);
     }
