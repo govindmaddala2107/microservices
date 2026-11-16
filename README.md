@@ -1898,7 +1898,13 @@ Receive Plain Text Configuration
     
     - jbjhbj
 ##### Metrics: How is the System Performing
-- Metrics are numerical values that help track system performance over time.
+- Metrics are numerical values or quantitative measurements that used to track system performance, health and behaviour of a system over time.
+- They measure 
+  - Performance Monitoring: how fast our services are responding, 
+  - how much memory they're using
+  - how many requests they're handling
+  - Troubleshooting & Debugging: whether there are any errors or failures.
+  - Scalability
 - Tools for metrics are:
   - Prometheus + Grafana
   - Datadog
@@ -1908,7 +1914,16 @@ Receive Plain Text Configuration
     - CPU usage: 80% (is system overloaded?)
     - Response Time: 500ms (Are users experiencing delays?)
     - Error rate: 5% (Are too many requests failing?)
-
+- Flowchart
+  ```
+  Microservices [Our Applications]
+        ↓
+  Prometheus [Metrics Collection]
+        ↓
+  Grafana [Visualizing Metrics]
+        ↓
+  Alerts [Optional]
+  ```
 ##### Traces: How Requests Flow Through the System
 - Traces track how a request moves across multiple microservices.
 - Tools for Traces:
@@ -1950,7 +1965,7 @@ Receive Plain Text Configuration
   ```text
   Spring Boot Microservices
             ↓
-      Application Logs
+    Application Logs
             ↓
     Grafana Alloy
     (Log Collector)
@@ -2005,7 +2020,14 @@ Receive Plain Text Configuration
 
 - Already Docker Compose file is there, then run like
   ```cd C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-loki; docker compose up -d```
-  ## Another Topic
+- ### Setting Up Micrometer and Prometheus with Grafana for Metrics Collection
+  - **Dependency needed** is:
+    - Prometheus: Expose Micrometer metrics in Prometheus format, an in-memory dimensional time series database with a simple built-in UI, a custom query language, and math operations.
+    - Actuator
+  - **Micrometer**
+    - Micrometer is a metrics library that provides monitoring for JVM based application.
+    - It acts as a bridge between springboot actuator amd monitoring systems like Prometheus, Grafana i.e it takes data from actator and transfer it to prometheus.
+## Another Topic
 
 
 

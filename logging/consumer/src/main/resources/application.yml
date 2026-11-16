@@ -2,6 +2,12 @@ spring:
   application:
     name: consumer
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
 eureka:
   client:
     serviceUrl:
