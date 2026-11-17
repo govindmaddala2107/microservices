@@ -2020,13 +2020,59 @@ Receive Plain Text Configuration
 
 - Already Docker Compose file is there, then run like
   ```cd C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-loki; docker compose up -d```
-- ### Setting Up Micrometer and Prometheus with Grafana for Metrics Collection
+- ### Setting Up Micrometer and Prometheus with Grafana for Metrics Collection in springboot.
   - **Dependency needed** is:
     - Prometheus: Expose Micrometer metrics in Prometheus format, an in-memory dimensional time series database with a simple built-in UI, a custom query language, and math operations.
+      ```xml
+      <dependency>
+        <groupId>io.micrometer</groupId>
+        <artifactId>micrometer-registry-prometheus</artifactId>
+        <scope>runtime</scope>
+      </dependency>
+      ```
     - Actuator
   - **Micrometer**
     - Micrometer is a metrics library that provides monitoring for JVM based application.
     - It acts as a bridge between springboot actuator amd monitoring systems like Prometheus, Grafana i.e it takes data from actator and transfer it to prometheus.
+  - Configure to create logs in files by 
+    ```yaml
+    logging:
+      level:
+        root: INFO
+      file:
+        name: C:/Users/EDIUS X/Desktop/gomad/microservices/logging/logs/${spring.application.name}-${server.port}.log
+        <!-- name: C:/Users/EDIUS X/Desktop/gomad/microservices/logging/logs/${spring.application.name}.log -->
+      logback:
+        rollingpolicy:
+        max-file-size: 5MB
+        max-history: 7
+    ```
+    - It will create files like 
+      - logging/logs/producer-8081.log
+      - logging/logs/producer-8082.log
+      - logging/logs/consumer.log
+  - created **evaluate-prometheus** folder which could setup
+    - docker setup using **docker-compose.yml**
+    - grafana setup
+    - prometheus
+    - alloy and loki setup
+  - Commands to run for this setup:
+    ```powershell
+    C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-prometheus
+    docker compose down -v
+    docker compose up -d
+    ```
+  - [Prometheus](http://localhost:9090/) available here.
+    ![Prometheus](images/PrometheusDashboard.png)
+    ![GrafanaLoki](images/GrafanaLoki.png)
+- ### Adding Existing Grafana Monitoring Dashboards:
+  - [Grafana Dashboards](https://grafana.com/grafana/dashboards)
+  - Example: [JVM Micrometer](https://grafana.com/grafana/dashboards/4701-jvm-micrometer/)
+    - Get Dashboard ID
+    - Dashboard > Import Dashboard > Copy Dashboard ID > Load > Add Data Source > Import
+- ### Adding Custom Grafana Monitoring Dashboard:
+  - New Dashboard > Panel > Configure Visualization > Select Metrics & Filters > Configure Title and other settings > Save.
+  
 ## Another Topic
 
 

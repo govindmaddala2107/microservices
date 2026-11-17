@@ -1,150 +1,92 @@
----
+
 networks:
   loki:
+    driver: bridge
 
 services:
-  read:
-    image: grafana/loki:latest
-    command: "-config.file=/etc/loki/config.yaml -target=read"
-    ports:
-      - 3101:3100
-      - 7946
-      - 9095
-    volumes:
-      - ./logging/loki-config.yaml:/etc/loki/config.yaml
-    depends_on:
-      - minio
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks: &loki-dns
-      loki:
-        aliases:
-          - loki
 
-  write:
-    image: grafana/loki:latest
-    command: "-config.file=/etc/loki/config.yaml -target=write"
-    ports:
-      - 3102:3100
-      - 7946
-      - 9095
-    volumes:
-      - ./logging/loki-config.yaml:/etc/loki/config.yaml
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      - minio
-    networks:
-      <<: *loki-dns
-
-  alloy:
-    image: grafana/alloy:latest
-    volumes:
-      - ./logging/alloy-local-config.yaml:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ../../logs:/logs-parent:ro
-    command:  run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
-    ports:
-      - 12345:12345
-    depends_on:
-      - gateway
-    networks:
-      - loki
-
+  # =========================================
+  # MINIO - OBJECT STORAGE
+  # =========================================
   minio:
     image: cgr.dev/chainguard/minio:latest
-    command: server /data
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9001"
     environment:
       MINIO_ROOT_USER: loki
       MINIO_ROOT_PASSWORD: supersecret
-      MINIO_UPDATE: "off"
     ports:
       - "9000:9000"
+      - "9001:9001"
     volumes:
       - ./.data/minio:/data
     networks:
       - loki
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /data/loki-data && \
-        mkdir -p /data/loki-ruler && \
-        minio server /data
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 15s
-      timeout: 20s
-      retries: 5
+    restart: unless-stopped
 
-  prometheus:
-    image: prom/prometheus:v2.44.0
-    container_name: prometheus
+  # =========================================
+  # LOKI READ
+  # =========================================
+  read:
+    image: grafana/loki:latest
+    command:
+      - -config.file=/etc/loki/config.yaml
+      - -target=read
     ports:
-      - "9090:9090"
+      - "3101:3100"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - loki
-
-  grafana:
-    image: grafana/grafana:latest
-    environment:
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - ./logging/loki-config.yaml:/etc/loki/config.yaml:ro
     depends_on:
-      - gateway
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-          - name: Loki
-            type: loki
-            access: proxy
-            url: http://gateway:3100
-            jsonData:
-              httpHeaderName1: "X-Scope-OrgID"
-            secureJsonData:
-              httpHeaderValue1: "tenant1"
-        EOF
-        /run.sh
-    ports:
-      - "3000:3000"
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - minio
     networks:
-      - loki
+      loki:
+        aliases:
+          - loki
+    restart: unless-stopped
 
+  # =========================================
+  # LOKI WRITE
+  # =========================================
+  write:
+    image: grafana/loki:latest
+    command:
+      - -config.file=/etc/loki/config.yaml
+      - -target=write
+    ports:
+      - "3102:3100"
+    volumes:
+      - ./logging/loki-config.yaml:/etc/loki/config.yaml:ro
+    depends_on:
+      - minio
+    networks:
+      loki:
+        aliases:
+          - loki
+    restart: unless-stopped
+
+  # =========================================
+  # LOKI BACKEND
+  # =========================================
   backend:
     image: grafana/loki:latest
+    command:
+      - -config.file=/etc/loki/config.yaml
+      - -target=backend
+      - -legacy-read-mode=false
     volumes:
-      - ./logging/loki-config.yaml:/etc/loki/config.yaml
-    ports:
-      - "3100"
-      - "7946"
-    command: "-config.file=/etc/loki/config.yaml -target=backend -legacy-read-mode=false"
+      - ./logging/loki-config.yaml:/etc/loki/config.yaml:ro
     depends_on:
-      - gateway
+      - minio
     networks:
       - loki
-    
+    restart: unless-stopped
 
+  # =========================================
+  # NGINX - LOKI GATEWAY
+  # =========================================
   gateway:
     image: nginx:latest
     depends_on:
@@ -154,69 +96,179 @@ services:
       - sh
       - -euc
       - |
-        cat <<EOF > /etc/nginx/nginx.conf
-        user  nginx;
-        worker_processes  5;  ## Default: 1
+        cat <<'EOF' > /etc/nginx/nginx.conf
+        user nginx;
+        worker_processes 5;
 
         events {
-          worker_connections   1000;
+          worker_connections 1000;
         }
 
         http {
-          resolver 127.0.0.11;
+          resolver 127.0.0.11 valid=10s;
 
           server {
-            listen             3100;
+            listen 3100;
 
             location = / {
               return 200 'OK';
               auth_basic off;
             }
 
+            location = /ready {
+              proxy_pass http://read:3100/ready;
+            }
+
             location = /api/prom/push {
-              proxy_pass       http://write:3100\$$request_uri;
+              proxy_pass http://write:3100$$request_uri;
             }
 
             location = /api/prom/tail {
-              proxy_pass       http://read:3100\$$request_uri;
-              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_pass http://read:3100$$request_uri;
+              proxy_set_header Upgrade $$http_upgrade;
               proxy_set_header Connection "upgrade";
             }
 
             location ~ /api/prom/.* {
-              proxy_pass       http://read:3100\$$request_uri;
+              proxy_pass http://read:3100$$request_uri;
             }
 
             location = /loki/api/v1/push {
-              proxy_pass       http://write:3100\$$request_uri;
+              proxy_pass http://write:3100$$request_uri;
             }
 
             location = /loki/api/v1/tail {
-              proxy_pass       http://read:3100\$$request_uri;
-              proxy_set_header Upgrade \$$http_upgrade;
+              proxy_pass http://read:3100$$request_uri;
+              proxy_set_header Upgrade $$http_upgrade;
               proxy_set_header Connection "upgrade";
             }
 
             location ~ /loki/api/.* {
-              proxy_pass       http://read:3100\$$request_uri;
+              proxy_pass http://read:3100$$request_uri;
             }
           }
         }
         EOF
+
         /docker-entrypoint.sh nginx -g "daemon off;"
     ports:
       - "3100:3100"
-    healthcheck:
-      test: ["CMD", "service", "nginx", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - loki
-  
+    restart: unless-stopped
 
+  # =========================================
+  # ALLOY - LOG COLLECTION
+  # =========================================
+  alloy:
+    image: grafana/alloy:latest
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./logging/alloy-local-config.yaml:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../logs:/logs-parent:ro
+    ports:
+      - "12345:12345"
+    depends_on:
+      - gateway
+    networks:
+      - loki
+    restart: unless-stopped
+
+  # =========================================
+  # PROMETHEUS - METRICS COLLECTION
+  # =========================================
+  prometheus:
+    image: prom/prometheus:v2.44.0
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - loki
+    restart: unless-stopped
+
+  # =========================================
+  # GRAFANA - VISUALIZATION
+  # =========================================
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    depends_on:
+      - gateway
+      - prometheus
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+
+        cat <<'EOF' > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+
+        datasources:
+
+          - name: Prometheus
+            uid: prometheus
+            type: prometheus
+            access: proxy
+            url: http://prometheus:9090
+            isDefault: true
+            editable: true
+
+          - name: Loki
+            uid: loki
+            type: loki
+            access: proxy
+            url: http://gateway:3100
+            jsonData:
+              httpHeaderName1: "X-Scope-OrgID"
+            secureJsonData:
+              httpHeaderValue1: "tenant1"
+            editable: true
+
+        EOF
+
+        /run.sh
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - loki
+    restart: unless-stopped
+
+  # =========================================
+  # FLOG - SAMPLE LOG GENERATOR
+  # =========================================
   flog:
     image: mingrammer/flog
-    command: -f json -d 200ms -l
+    command:
+      - -f
+      - json
+      - -d
+      - 200ms
+      - -l
     networks:
       - loki
+    restart: unless-stopped
+
+# =========================================
+# PERSISTENT VOLUMES
+# =========================================
+volumes:
+  grafana_data:
+  prometheus_data:

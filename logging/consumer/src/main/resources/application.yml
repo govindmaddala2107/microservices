@@ -15,4 +15,14 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
+logging:
+  level:
+    root: INFO
+  file:
+    name: C:/Users/EDIUS X/Desktop/gomad/microservices/logging/logs/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+    max-file-size: 5MB
+    max-history: 7
+
 
