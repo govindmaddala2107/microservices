@@ -2072,7 +2072,220 @@ Receive Plain Text Configuration
     - Dashboard > Import Dashboard > Copy Dashboard ID > Load > Add Data Source > Import
 - ### Adding Custom Grafana Monitoring Dashboard:
   - New Dashboard > Panel > Configure Visualization > Select Metrics & Filters > Configure Title and other settings > Save.
-  
+- ### Distributed Tracing in Mircoservices:
+  - A way to track requests as they move through **different services** in a microservice architecture.
+  - Flow will be like:
+    ``` 
+    [Client]
+      |__[Microservice-1 (Span ID-1, TRACE_ID_1)] 
+          |__[Microservice-2 (Span ID-2, TRACE_ID_1)]  
+              |__[Microservice-3 (Span ID-3, TRACE_ID_1)]
+    ```
+    - so for each service, there will be separate span id, but trace id will be same across the entire request from start to end.
+  - Example:
+    ```
+    Order Places [Trace ID: 12345]
+    |-- Order Service [Span: 1]
+    |   |-- Payment Service [Span: 2]
+    |   |-- Inventory Service [Span: 3]
+    |   |-- Notification Service [Span: 4]
+    |
+    |-- Database service [Span: 5]
+    ```
+  - Benefits:
+    - Find Performance issues.
+    - Debugging Failures
+    - Improve Reliability
+    - Optimize Microservices
+  - **Zipkin** is a tool to achieve this distributed tracing.
+- #### Distributed Tracing with Zipkin:
+  - Zipkin is an open-source distributed tracing system that collects timing data to help troubleshoot latency and errors in microservices architectures.
+  - Docker setup:
+    - Direct command:
+      ```powershell
+      docker run -d -p 9411:9411 openzipkin/zipkin
+      ```
+    - Compose setup: [Added in C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-prometheus\docker-compose.yml]
+      ```yml
+        zipkin:
+          image: openzipkin/zipkin
+          container_name: zipkin
+          ports:
+            # Port used for the Zipkin UI and HTTP Api
+            - 9411:9411
+          networks:
+            - loki
+      ```
+    - [Zipkin Home Page](http://localhost:9411/zipkin/):
+      ![ZipKin Home Page](images/ZipKin.png)
+  - Springboot Setup:
+    - Now Zipkin is running on 9411
+    - Dependency needed is **Zipkin**, **actuator** and keep in consumer and producer
+      ```xml
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-zipkin</artifactId>
+      </dependency>
+      ```
+    - In application.yml
+      ```yaml
+      management:
+        endpoints:
+          web:
+            exposure:
+              include: "*"
+        tracing:
+          sampling:
+            probability: 1.0
+      ```
+    - Code Setup is: In rest client, we need to make some changes to inject span and trace-id, so RestClient code will be updated as follows and this template can be used for others.
+      ```java
+      package com.gomad.consumer.rest_client;
+
+      <!-- Zipkin Setup -->
+      import io.micrometer.observation.ObservationRegistry;
+      import io.micrometer.tracing.Tracer;
+      import io.micrometer.tracing.propagation.Propagator;
+      <!-- Zipkin Setup -->
+
+      import org.springframework.beans.factory.annotation.Autowired;
+      import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+      import org.springframework.context.annotation.Bean;
+      import org.springframework.context.annotation.Configuration;
+      import org.springframework.context.annotation.Primary;
+      import org.springframework.context.annotation.Scope;
+      import org.springframework.http.client.ClientHttpRequestInterceptor;
+      import org.springframework.web.client.RestClient;
+
+      @Configuration
+      public class RestClientConfig {
+
+          <!-- Zipkin Setup -->
+
+          @Autowired(required = false)
+          private ObservationRegistry observationRegistry;
+
+          @Autowired(required = false)
+          private Tracer tracer;
+
+          @Autowired(required = false)
+          private Propagator propagator;
+          
+          <!-- Zipkin Setup -->
+
+          /**
+          * Creates a load-balanced builder for requests addressed by Eureka service name.
+          */
+          @Bean
+          @LoadBalanced
+          @Scope("prototype")
+          public RestClient.Builder loadBalancedRestClientBuilder() {
+              RestClient.Builder builder = RestClient.builder();
+
+              <!-- Zipkin Setup -->
+              if(observationRegistry != null){
+                  builder.requestInterceptor(createTrackingInterceptor());
+              }
+              <!-- Zipkin Setup -->
+
+              return builder;
+          }
+
+
+          <!-- Zipkin Setup -->
+          private ClientHttpRequestInterceptor createTrackingInterceptor() {
+              return ((request, body, execution) -> {
+                  if(tracer != null
+                      && propagator != null
+                          && tracer.currentSpan() != null
+                  ){
+                      propagator.inject(
+                              tracer.currentTraceContext().context(),
+                              request.getHeaders(),
+                              (carrier, key, value) -> carrier.add(key, value)
+                              );
+                  }
+                  return execution.execute(request, body);
+              });
+          }
+          <!-- Zipkin Setup -->
+
+          /**
+          * Provides the default non-load-balanced builder for framework HTTP clients, including Eureka.
+          */
+          @Bean
+          @Primary
+          @Scope("prototype")
+          public RestClient.Builder restClientBuilder() {
+              return RestClient.builder();
+          }
+
+          /**
+          * Builds a client that resolves the PRODUCER service through Eureka and the load balancer.
+          */
+          @Bean
+          public RestClient restClient(@LoadBalanced RestClient.Builder builder) {
+              return builder.baseUrl("http://PRODUCER").build();
+          }
+      }
+      ```
+    - Accessed [Consumer_Rest_Client_Endpoint](http://localhost:8080/api/rest-client) which uses Producer. Now in zipkin:
+      ![Rest_Client](images/RestClientZipkin.png)
+      ![RestClientZipkinSpanTrace](images/RestClientZipkinSpanTrace.png)
+      ![Dependency](images/Zipkin_Dependency.png)
+  - #### Zipkin with Grafana:
+    - Add Zipkin as datasource.
+      - url is: http://zipkin:9411/
+      - Zipkin container and grafana should be in same network i.e docker network which I maintained in docker-compose.yml
+      ![Zipkin_Grafana_Setup](images/Zipkin_Grafana_setup.png)
+      ![TraceID_Checking_Zipkin_Grafana](images/TraceID_Checking_Zipkin_Grafana.png)
+
+## API Gateways:
+- An API Gateway is a single entry point (reverse proxy) that sits between clients (web apps, mobile apps) and backend services (microservices), managing, routing, and securing all API requests.
+- **Why Use an API Gateway?**:
+  - Without an API Gateway, clients must talk directly to multiple microservices, leading to exposed internal architectures, duplicated security logic, and complex client code. 
+  - An API Gateway solves this by decoupling the client from backend complexity.
+- **Core Functions**
+  - **Request Routing:** Directs incoming requests to the appropriate backend microservice based on the URL path, headers, or HTTP method (e.g., /users → User Service, /orders → Order Service).
+  - **Authentication & Authorization:** Verifies user identity (via JWT, OAuth2, or API keys) at the edge before forwarding requests to internal services.
+  - **Rate Limiting & Throttling:** Protects backend services from traffic spikes and DDoS attacks by restricting how many requests a client can make in a given timeframe.
+  - **Protocol Translation:** Converts external protocols (like HTTP/REST) into internal protocols (like gRPC or AMQP) used by microservices.
+  - **Response Aggregation:** Combines data from multiple microservices into a single response to reduce client round-trips (often used in the Backend for Frontend (BFF) pattern).
+  - **Caching & Load Balancing:** Caches frequent responses to lower latency and distributes traffic across multiple instances of a service.
+  - **Logging & Monitoring:** Centralizes request metrics, tracing, and error logs in one place.
+- **API Gateway vs. Load Balancer vs. Reverse Proxy**
+  | Feature	| Reverse Proxy | Load Balancer	| API Gateway |
+  | --- | --- | --- | --- |
+  | Primary Role | Forwards requests to servers, handles SSL/caching | Distributes traffic evenly across server instances |	Manages, routes, secures, and transforms API traffic |
+  | OSI Layer	| Layer 4 or Layer 7	| Usually Layer 4 (Transport) or Layer 7 (Application)	| Layer 7 (Application) |
+  | API-Aware? |	No (routes by basic URLs/IPs)	| No (routes by server health/load)	| Yes (understands JWTs, JSON, rate limits, API versions) |
+
+- **Common Pros & Cons**
+  - **Pros:**
+    - Simplifies client-side code (one URL instead of dozens) and thus encapsulates internal system architecture.
+    - Centralizes cross-cutting concerns (auth, logging, CORS).
+    - Allows backend microservices to be refactored or split without breaking clients.
+    - handle cross-cutting concerns like security, load balancing, rate limiting and analytics.
+    - can authenticate incoming requests  and pass only valid requests to services.
+    - can aggregate responses from different microservices.
+  - **Cons:**
+    - Single Point of Failure: If the gateway goes down, the entire API goes down (must be deployed with high availability).
+    - Added Latency: Introduces an extra network hop for every request.
+    - Bottleneck Risk: Putting too much business logic inside the gateway makes it hard to maintain.
+- **Popular API Gateway Tools**
+  - **Cloud-Managed:** 
+    - AWS API Gateway, Azure API Management, Google Cloud Apigee.
+  - **Open-Source / Self-Hosted:** Kong, NGINX, Envoy, Traefik, Apache APISIX.
+  - **Framework-Specific:** Spring Cloud Gateway (Java), Ocelot (.NET), Express Gateway (Node.js).
+
+
+
+
+
+
+
+
+
 ## Another Topic
 
 
