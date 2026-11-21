@@ -2459,6 +2459,75 @@ Receive Plain Text Configuration
                     .filters(f -> f.rewritePath("/rest-client(?<segment>/?.*)", "/api/rest-client${segment}"))
                     .uri("lb://CONSUMER"))
           ```
+## Fault Tolerance:
+- Ability to continue operating without interruption.
+- **Need for Fault Tolerance**:
+  - Fault Isolation: if one microservice is down, it shouldn't hamper entire application.
+  - Network Latency: due to network calls, there might be some latency and it could lead to errors
+  - Deployment issues: during deployment, that particular microservice would be down for sometime.
+  - Increased Complexity: with multiple microservices, developers might face unseen issues.
+  - Elasticity: it talks about how well microservices can scale independently based on demand.
+  - Tolerating External Failures: microservices, which are calling third party apis, which are causing issues, then that microservices will be impacted.
+  - Note: So while building distributed systems, then fault tolerance might be considered.
+- **Failures in Microservices**
+  - **Network Failures**
+    - **What and why?**
+      - Networks can fail because of bad connections, traffic overload, hardware issues
+      - **How to handle it?**
+        - **Retry Mechanism:** Try again a few times before giving up. If the Payment Service doesn't respond, wait 2 seconds and try again.
+        - **Timeouts:** Don't wait forever. Stop waiting after 3-5 seconds and show a message.
+        - **Fallback Response:** Show a friendly message like: "Payment service is currently unavailable. Please try again later."
+  - **Service Unavailability**
+    - **What and why?**
+      - A microservice stops working completely because crashes, maintenance, server failures.
+    - **How to handle it?**
+      - **Circuit Breaker Pattern:** If a service keeps failing, stop calling it for some time and show a message.
+      - **Load Balancing:** Have multiple copies of a service so if one crashes, another can handle the request.
+      - **Service Discovery:** Use tools like Eureka to find healthy services and avoid calling the broken ones.
+  - **High Latency Issues**
+    - **What and why?**
+      - Some services take too long to respond because of too many requests, slow database queries, external API delays
+    - **How to handle it?**
+      - **Caching:** Store frequently used data (like product details) in memory (Redis, Hazelcast) so it loads instantly.
+      - **Asynchronous Processing:** Instead of making the user wait, send the request to a queue (Kafka, RabbitMQ) and process it in the background.
+      - **Timeouts & Fallbacks:** If the service is slow, stop waiting after 3-5 seconds and show a default list of products.
+- ### Resilience4j:
+  - **Resilience**: Ability or capacity to recover quickly from difficulties.
+  - Resilience4j Techniques:
+    - **Retries:** Automatically re-executes a failed operation a set number of times to overcome transient network or service glitches.
+    - **Rate Limiting:** Restricts the number of requests a service accepts within a given time window to prevent overload and ensure fair usage.
+    - **Bulkheads:** Isolates resources (such as thread pools or concurrent calls) per service so a failure in one component does not exhaust resources for others.
+    - **Circuit Breakers:** Monitors failure rates and temporarily blocks calls to a failing service to prevent cascading failures and allow recovery time.
+    - **Fallbacks:** Provides an alternative response or default behavior when a primary operation fails after resilience mechanisms are triggered.
+    - **Timeouts:** Sets a maximum wait time for a response before aborting the call so slow dependencies do not block threads indefinitely.
+    - **Graceful Degradation:** Maintains core system functionality with reduced features or partial data when non-critical components fail.
+- **Why Resilience ?**
+  - Resilience4J is a lightweight, easy to use fault library.
+  - Easy integration with spring boot.
+  - Built for functional programming paradigms.
+- **Resilience4j modules**:
+  - Retry Module
+  - RateLimiter
+  - Bulkhead
+  - CircuitBreaker
+  - #### Retry Module:
+    - It's not uncommon for a network call or a method invocation to fail temporarily.
+    - We might want to retry the operation a few times before giving up.
+    - Retry module enables to easily implement retry logic in our applications.
+  - #### RateLimiter:
+    - We might have a service which can handle only a certain number of requests in given time
+    - RateLimiter module allows us to enforce restrictions and protect our services from too many requests
+  - #### Bulkhead:
+    - Isolate failures and prevents them from cascading through the system.
+    - Limit the amount of parallel executions or concurrent calls to prevent system resources from being exhausted.
+  - #### CircuitBreaker:
+    - Used to prevent a network or service failure from cascading to other services.
+    - It 'trips' or opens & prevents further calls to the service.
+    
+
+
+
+
 
 ## Another Topic
 
