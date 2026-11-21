@@ -2523,6 +2523,70 @@ Receive Plain Text Configuration
   - #### CircuitBreaker:
     - Used to prevent a network or service failure from cascading to other services.
     - It 'trips' or opens & prevents further calls to the service.
+- #### Code setup:
+  - Dependencies needed are:
+    - Resilience4j:
+      ```xml
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+      </dependency>
+      ```
+    - Actuator: to check health of application.
+  - in application.yml of consumer:
+    ```yaml
+    # Actuator related configurations
+    management:
+      # to enable all routes
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+      # To give more info about health router
+      endpoint:
+        health:
+          show-details: always
+
+    # Circuit Breaking Config:
+    resilience4j:
+      circuitbreaker:
+        instances:
+          productService:
+            # Exposes Circuit Breaker status (UP, DOWN, OPEN, CLOSED, HALF_OPEN)
+            # through Spring Boot Actuator health endpoint.
+            registerHealthIndicator: true
+
+            # Number of calls to consider when calculating the failure rate.
+            # Here, the last 10 calls are tracked.
+            slidingWindowSize: 10
+
+            # Minimum number of calls required before calculating the failure rate.
+            # Circuit Breaker will not open until at least 5 calls are recorded.
+            minimumNumberOfCalls: 5
+
+            # Number of test calls allowed when the Circuit Breaker moves
+            # from OPEN to HALF_OPEN state.
+            permittedNumberOfCallsInHalfOpenState: 3
+
+            # Time the Circuit Breaker stays in OPEN state before transitioning
+            # to HALF_OPEN and allowing test requests.
+            waitDurationInOpenState: 10s
+
+            # Failure percentage threshold.
+            # If 50% or more of the monitored calls fail,
+            # the Circuit Breaker transitions to OPEN state.
+            failureRateThreshold: 50
+
+            # Automatically transitions from OPEN to HALF_OPEN after
+            # waitDurationInOpenState without requiring a new request.
+            automaticTransitionFromOpenToHalfOpenEnabled: true
+
+            # Uses a fixed number of calls (slidingWindowSize)
+            # to calculate the failure rate.
+            # Alternative: time_based (e.g., last 60 seconds).
+            slidingWindowType: count_based
+
+    ```
     
 
 
