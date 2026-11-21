@@ -254,7 +254,7 @@
     ```
 - #### Cloud Client Setup:
   - Now in client, delete all *.yml files and keep **application.yml** and keep
-    ```yml
+    ```yaml
     spring:
       application:
         name: h2jpa
@@ -2106,15 +2106,15 @@ Receive Plain Text Configuration
       docker run -d -p 9411:9411 openzipkin/zipkin
       ```
     - Compose setup: [Added in C:\Users\EDIUS X\Desktop\gomad\microservices\logging\evaluate-prometheus\docker-compose.yml]
-      ```yml
-        zipkin:
-          image: openzipkin/zipkin
-          container_name: zipkin
-          ports:
-            # Port used for the Zipkin UI and HTTP Api
-            - 9411:9411
-          networks:
-            - loki
+      ```yaml
+      zipkin:
+        image: openzipkin/zipkin
+        container_name: zipkin
+        ports:
+          # Port used for the Zipkin UI and HTTP Api
+          - 9411:9411
+        networks:
+          - loki
       ```
     - [Zipkin Home Page](http://localhost:9411/zipkin/):
       ![ZipKin Home Page](images/ZipKin.png)
@@ -2277,6 +2277,115 @@ Receive Plain Text Configuration
     - AWS API Gateway, Azure API Management, Google Cloud Apigee.
   - **Open-Source / Self-Hosted:** Kong, NGINX, Envoy, Traefik, Apache APISIX.
   - **Framework-Specific:** Spring Cloud Gateway (Java), Ocelot (.NET), Express Gateway (Node.js).
+- API Gateway Patterns:
+  - Backend For Frontend [BFF]:
+    - When different clients need different url hitting and different responses, use this kind of.
+    ![Backend For Frontend](images/BFF.png)
+  - Single Entry Point:
+    ![Single Entry Point](images/SEP.png)
+  - Aggregation Gateway:
+    - Gateway Aggregation combines data from multiple microservices into a single response, reducing the number of requests made by clients.
+
+    - Unified Access: Collects data from multiple services and exposes it through a single endpoint.
+    - Improved Performance: Reduces network calls and decreases client-side complexity.
+    - Example: In an e-commerce application, the gateway combines product details, inventory status, and customer reviews from different services into a single response. This allows the client to retrieve all required information with one API call.
+
+- Best Practices for API Gateways:
+  - **Use Load Balancing**
+    - never hardcode urls and use lb://* kind of urls 
+    - so this could help to route onto multiple instances else it will access only one instance.
+  - **Implement Authentication & Security**.
+  - **Handle Errors Gracefully**.
+    - if one instance is down, instead of crashing, handle them gracifully with fallbacks.
+
+- Code setup:
+  - Dependencies needed are:
+    - Reactive Gateway [Spring Cloud Routing]
+      - Provides a simple, yet effective way to route to APIs in reactive applications. Provides cross-cutting concerns to those APIs such as security, monitoring/metrics, and resiliency.
+    - Eureka [To register and access services with service Name]
+    - Client Config [if we want to setup config from config server]
+    - Zipking [For Distributed Logging]
+  - We can configure routing through yml:
+    ```yaml
+    spring:
+        cloud:
+          gateway:
+            server:
+              webflux:
+                routes:
+
+                  # Consumer route
+                  - id: consumer
+      #              uri: http://localhost:8080
+                    uri: lb://CONSUMER
+                    predicates:
+                      - Path=/rest-client/**,/api/feign/**,/api/web-client/**,/api/http-interface/**
+                    filters:
+                        - "RewritePath=/rest-client(?<segment>/?.*), /api/rest-client${segment}"
+                  # Producer route
+                  - id: producer
+                    uri: lb://PRODUCER
+                    predicates:
+                      - Path=/instance-info/**
+                  # Route for Eureka Dashboard
+                  - id: eureka
+                    uri: http://localhost:8761
+                    predicates:
+                      - Path=/eureka/main
+                    filters:
+                      - SetPath=/
+
+                  # Route for Eureka Static Resources (CSS, JS, fonts, images)
+                  - id: eureka-server-static
+                    uri: http://localhost:8761
+                    predicates:
+                      - Path=/eureka/**
+    ```
+    - Notes:
+      - Each routing configuration will be like:
+        ```yaml
+        # Producer route
+        spring:
+          cloud:
+            gateway:
+              server:
+                webflux:
+                  routes:
+                    - id: producer
+                      uri: lb://PRODUCER
+                      predicates:
+                        - Path=/instance-info/**
+        ```
+      - Always use lb i.e loadbalancer instead of hardcoded urls.
+        ```yaml
+        <!-- uri: http://localhost:8080 -->
+        uri: lb://CONSUMER
+        ```
+      - Actual route is /api/** but user need to hit without "api", but we have to accept and have to again add "/api/" and then we have to route like:
+        ```yaml
+        predicates:
+          - Path=/rest-client/**,/api/feign/**,/api/web-client/**,/api/http-interface/**
+        filters:
+            - "RewritePath=/rest-client(?<segment>/?.*), /api/rest-client${segment}"
+        ```
+        - Here actual url is: /api/rest-client but user will hit /rest-client only, and then we append /api and route to /api/rest-client.
+      - Eureka setup:
+        - Actual eureka url is **http://localhost:8761/** but we want to route on gateway and url is **http://localhost:5000/eureka/main** and config setup we need to done and also css won't apply as they are static files.
+          ```yaml
+          # Route for Eureka Dashboard
+          - id: eureka
+            uri: http://localhost:8761
+            predicates:
+              - Path=/eureka/main
+            filters:
+              - SetPath=/
+
+          # Route for Eureka Static Resources (CSS, JS, fonts, images)
+          - id: eureka-server-static
+            uri: http://localhost:8761
+            predicates:
+              - Path=/eureka/**
+          ```
 
 
 
@@ -2285,6 +2394,71 @@ Receive Plain Text Configuration
 
 
 
+  - We can configure routing through Java coding also and it is preferable since it is more flexible and code is like:
+    ```java
+    package com.gomad.gateway;
+
+    import org.springframework.cloud.gateway.route.RouteLocator;
+    import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+    import org.springframework.context.annotation.Bean;
+    import org.springframework.context.annotation.Configuration;
+
+    @Configuration
+    public class RoutingConfig {
+
+        @Bean
+        public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+            return builder.routes()
+                    .route("consumer",
+                            r -> r
+                                    .path("/rest-client/**", "/api/feign/**", "/api/web-client/**", "/api/http-interface/**")
+                                    .filters(f -> f.rewritePath("/rest-client(?<segment>/?.*)", "/api/rest-client${segment}"))
+                                    .uri("lb://CONSUMER"))
+                    .route("producer", r -> r.path("/instance-info/**").uri("lb://PRODUCER"))
+                    .route("eureka", r -> r
+                            .path("/eureka/main")
+                            .filters(f -> f.rewritePath("/eureka/main", "/"))
+                            .uri("http://localhost:8761"))
+                    .route("eureka-server-static", r -> r.path("/eureka/**").uri("http://localhost:8761"))
+                    .build();
+        }
+    }
+    ```
+      - Notes:
+        - Simple One setup of routing will be like:
+          ```java
+          @Bean
+          public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+              return builder.routes()
+                      .route(
+                        "producer", 
+                         r -> r
+                          .path("/instance-info/**")
+                          .uri("lb://PRODUCER")
+                      )                      
+                      .build();
+          }
+          ```
+        - For eureka setup to change from http://localhost:8761/ to http://localhost:5000/eureka/main will be like: 
+          ```java
+          <!-- Eureka Setup -->
+          .route("eureka", r -> r
+                  .path("/eureka/main")
+                  <!-- To rewrite url path -->
+                  .filters(f -> f.rewritePath("/eureka/main", "/"))
+                  .uri("http://localhost:8761"))
+          <!-- Eureka Static Path Setup -->
+          .route("eureka-server-static", r -> r.path("/eureka/**").uri("http://localhost:8761"))
+          ```
+        - Actual route is /api/** but user need to hit without "api", but we have to accept and have to again add "/api/" and then we have to route like:
+          ```java
+          .route("consumer",
+                  r -> r
+                    .path("/rest-client/**")
+                    <!-- Filter and rewrite path -->
+                    .filters(f -> f.rewritePath("/rest-client(?<segment>/?.*)", "/api/rest-client${segment}"))
+                    .uri("lb://CONSUMER"))
+          ```
 
 ## Another Topic
 
