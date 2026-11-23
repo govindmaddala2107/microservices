@@ -2298,7 +2298,7 @@ Receive Plain Text Configuration
   - **Handle Errors Gracefully**.
     - if one instance is down, instead of crashing, handle them gracifully with fallbacks.
 
-- Code setup:
+- Code setup in Gateway:
   - Dependencies needed are:
     - Reactive Gateway [Spring Cloud Routing]
       - Provides a simple, yet effective way to route to APIs in reactive applications. Provides cross-cutting concerns to those APIs such as security, monitoring/metrics, and resiliency.
@@ -2523,8 +2523,7 @@ Receive Plain Text Configuration
   - #### CircuitBreaker:
     - Used to prevent a network or service failure from cascading to other services.
     - It 'trips' or opens & prevents further calls to the service.
-- #### Code setup:
-  - Dependencies needed are:
+  - ##### Dependencies needed are:
     - Resilience4j:
       ```xml
       <dependency>
@@ -2533,61 +2532,450 @@ Receive Plain Text Configuration
       </dependency>
       ```
     - Actuator: to check health of application.
-  - in application.yml of consumer:
-    ```yaml
-    # Actuator related configurations
-    management:
-      # to enable all routes
-      endpoints:
-        web:
-          exposure:
-            include: "*"
-      # To give more info about health router
-      endpoint:
-        health:
-          show-details: always
+    - AOP: to intercept methods and classes.
+- #### CircuitBreaker Code setup:
+  - ##### At Microservice Level:
+    - in application.yml of consumer:
+      ```yaml
+      # Actuator related configurations
+      management:
+        # to enable all routes
+        endpoints:
+          web:
+            exposure:
+              include: "*"
+        # To give more info about health router
+        endpoint:
+          health:
+            show-details: always
 
-    # Circuit Breaking Config:
-    resilience4j:
-      circuitbreaker:
-        instances:
-          productService:
-            # Exposes Circuit Breaker status (UP, DOWN, OPEN, CLOSED, HALF_OPEN)
-            # through Spring Boot Actuator health endpoint.
-            registerHealthIndicator: true
+      # Circuit Breaking Config:
+      resilience4j:
+        circuitbreaker:
+          instances:
+            productService:
+              # Exposes Circuit Breaker status (UP, DOWN, OPEN, CLOSED, HALF_OPEN)
+              # through Spring Boot Actuator health endpoint.
+              registerHealthIndicator: true
 
-            # Number of calls to consider when calculating the failure rate.
-            # Here, the last 10 calls are tracked.
-            slidingWindowSize: 10
+              # Number of calls to consider when calculating the failure rate.
+              # Here, the last 10 calls are tracked.
+              slidingWindowSize: 10
 
-            # Minimum number of calls required before calculating the failure rate.
-            # Circuit Breaker will not open until at least 5 calls are recorded.
-            minimumNumberOfCalls: 5
+              # Minimum number of calls required before calculating the failure rate.
+              # Circuit Breaker will not open until at least 5 calls are recorded.
+              minimumNumberOfCalls: 5
 
-            # Number of test calls allowed when the Circuit Breaker moves
-            # from OPEN to HALF_OPEN state.
-            permittedNumberOfCallsInHalfOpenState: 3
+              # Number of test calls allowed when the Circuit Breaker moves
+              # from OPEN to HALF_OPEN state.
+              permittedNumberOfCallsInHalfOpenState: 3
 
-            # Time the Circuit Breaker stays in OPEN state before transitioning
-            # to HALF_OPEN and allowing test requests.
-            waitDurationInOpenState: 10s
+              # Time the Circuit Breaker stays in OPEN state before transitioning
+              # to HALF_OPEN and allowing test requests.
+              waitDurationInOpenState: 10s
 
-            # Failure percentage threshold.
-            # If 50% or more of the monitored calls fail,
-            # the Circuit Breaker transitions to OPEN state.
-            failureRateThreshold: 50
+              # Failure percentage threshold.
+              # If 50% or more of the monitored calls fail,
+              # the Circuit Breaker transitions to OPEN state.
+              failureRateThreshold: 50
 
-            # Automatically transitions from OPEN to HALF_OPEN after
-            # waitDurationInOpenState without requiring a new request.
-            automaticTransitionFromOpenToHalfOpenEnabled: true
+              # Automatically transitions from OPEN to HALF_OPEN after
+              # waitDurationInOpenState without requiring a new request.
+              automaticTransitionFromOpenToHalfOpenEnabled: true
 
-            # Uses a fixed number of calls (slidingWindowSize)
-            # to calculate the failure rate.
-            # Alternative: time_based (e.g., last 60 seconds).
-            slidingWindowType: count_based
+              # Uses a fixed number of calls (slidingWindowSize)
+              # to calculate the failure rate.
+              # Alternative: time_based (e.g., last 60 seconds).
+              slidingWindowType: count_based
+      ```
+  
+    - Here Consumer is accessing Producer [Which I stopped intentionally, so no producer is avaiable.]
+      ```java
+      package com.gomad.consumer.rest_client;
 
-    ```
+      import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+
+      @Service
+      @RequiredArgsConstructor
+      public class ProviderRestClient {
+
+          private final RestClient restClient;
+
+         @CircuitBreaker(name = "producerService", fallbackMethod = "getInstanceInfoFallback")
+          public String getInstanceInfo(){
+              return restClient.get().uri("/instance-info")
+                      .retrieve()
+                      .body(String.class);
+          }
+
+          public String getInstanceInfoFallback(Throwable throwable){
+              return "No instances available for PRODUCER";
+          }
+      }
+      ```
+      - getInstanceInfoFallback method should take all parameters of getInstanceInfo and extra throwable or Exception will be taken, then only on exception, ```"No instances available for PRODUCER"``` will be returned on producer service is down.
+      - @CircuitBreaker(name = "producerService", fallbackMethod = "getInstanceInfoFallback")
+        - name should be same as given in yml config like below:
+          ```yaml
+          resilience4j:
+            circuitbreaker:
+              instances:
+                productService:
+                  ..............
+          ```
+    - Now on accessing Consumer Rest Client api will return fallback like:
+      ![CircuitBreakerAtServiceLevel](images/CircuitBreakerAtServiceLevel.png)
+    - When fallback is not there, then some 500 internal server message will be returned.
+  - ##### At Gateway level:
+    - We will configure circuit breaker here means, when service is down, when we access from gateway, it checks for instance from eureka and if it is not found, it will return fallback. Configuration will be like as follows:
+    - Yaml configuration is:
+      ```yaml
+      # Circuit Breaking Config:
+      resilience4j:
+        circuitbreaker:
+          instances:
+            eComGatewayService:
+              # Exposes Circuit Breaker status (UP, DOWN, OPEN, CLOSED, HALF_OPEN)
+              # through Spring Boot Actuator health endpoint.
+              registerHealthIndicator: true
+
+              # Number of calls to consider when calculating the failure rate.
+              # Here, the last 10 calls are tracked.
+              slidingWindowSize: 10
+
+              # Minimum number of calls required before calculating the failure rate.
+              # Circuit Breaker will not open until at least 5 calls are recorded.
+              minimumNumberOfCalls: 5
+
+              # Number of test calls allowed when the Circuit Breaker moves
+              # from OPEN to HALF_OPEN state.
+              permittedNumberOfCallsInHalfOpenState: 3
+
+              # Time the Circuit Breaker stays in OPEN state before transitioning
+              # to HALF_OPEN and allowing test requests.
+              waitDurationInOpenState: 10s
+
+              # Failure percentage threshold.
+              # If 50% or more of the monitored calls fail,
+              # the Circuit Breaker transitions to OPEN state.
+              failureRateThreshold: 50
+
+              # Automatically transitions from OPEN to HALF_OPEN after
+              # waitDurationInOpenState without requiring a new request.
+              automaticTransitionFromOpenToHalfOpenEnabled: true
+
+              # Uses a fixed number of calls (slidingWindowSize)
+              # to calculate the failure rate.
+              # Alternative: time_based (e.g., last 60 seconds).
+              slidingWindowType: count_based
+      ```
+    - Code setup is:
+      - Routing setup: 
+        ```java
+        package com.gomad.gateway;
+
+        @Configuration
+        public class RoutingConfig {
+
+          @Bean
+          public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+              return builder
+                      .routes()
+                      .route("producer", 
+                        r -> 
+                          r.path("/instance-info/**")
+                          .filters(f -> f.circuitBreaker(config ->
+                              config.setName("eComGatewayService").setFallbackUri("forward:/fallback/products")
+                            ))
+                          .uri("lb://PRODUCER"))
+                          .build();
+          }
+        }
+        ```
+      - FallbackController.java is 
+        ```java
+        package com.gomad.gateway;
+
+        import org.springframework.http.HttpStatus;
+        import org.springframework.http.ResponseEntity;
+        import org.springframework.web.bind.annotation.RequestMapping;
+        import org.springframework.web.bind.annotation.RequestMethod;
+        import org.springframework.web.bind.annotation.RestController;
+
+        import java.util.Collections;
+        import java.util.List;
+
+        @RestController
+        public class FallbackController {
+
+            @RequestMapping(value = "/fallback/products", method = RequestMethod.GET)
+            public ResponseEntity<List<String>> producerFallback(){
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Collections.singletonList("Producer is not available from gateway."));
+            }
+        }
+        ```
+      - ```f.circuitBreaker(config -> config.setName("eComGatewayService").setFallbackUri("forward:/fallback/products"))``` in which:
+        - name: eComGatewayService is configured in yaml file and **forward:/fallback/products** is FallbackController endpoint.
     
+    - Testing: Here I have configured for producer and I stopped Producer instance and when I try to access producer from gateway like: **http://localhost:5000/instance-info** then output will be like:
+      ```javascript
+      [
+        "Producer is not available from gateway."
+      ]
+      ```
+      ![CircuitBreakerAtGatewayLevel](images/CircuitBreakerAtGatewayLevel.png)
+- #### Retry Code setup:
+  - When something is wrong, then it will retry for configured times.
+  - ##### At Microservice Level:
+    - Configuration level setup is:
+      ```yaml
+      resilience4j:
+          retry:
+            instances:
+              ecomRetryBreaker:
+                maxAttempts: 5
+                waitDuration: 500ms
+      ```
+    - Code level setup is:
+      ```java
+      package com.gomad.consumer.rest_client;
+
+      import io.github.resilience4j.retry.annotation.Retry;
+
+      @Service
+      @RequiredArgsConstructor
+      public class ProviderRestClient {
+
+          private final RestClient restClient;
+          int attempt = 0;
+
+          @Retry(name = "ecomRetryBreaker", fallbackMethod = "getInstanceInfoFallback")
+          public String getInstanceInfo(){
+              System.out.println("Tried for " + ++attempt);
+              return restClient.get().uri("/instance-info")
+                      .retrieve()
+                      .body(String.class);
+          }
+
+          public String getInstanceInfoFallback(Throwable throwable){
+              return "No instances available for PRODUCER";
+          }
+      }
+      ```
+    - Testing:
+      ![RetryAtServiceLevelConsole](images/RetryAtServiceLevelConsole.png)
+      ![RetryAtServiceLevelApiResponse](images/RetryAtServiceLevelApiResponse.png)
+  - ##### At Gateway Level:
+    - Configuration setup in yaml is:
+      ```yaml
+      resilience4j:
+        retry:
+          instances:
+            ecomRetryBreaker:
+              maxAttempts: 5
+              waitDuration: 500ms
+      ```
+    - Code setup is:
+      ```java
+      package com.gomad.gateway;
+
+      @Configuration
+      public class RoutingConfig {
+
+        @Bean
+        public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+            return builder.routes()
+            .route("consumer",
+                r -> r
+                    .path("/rest-client/**")
+                    .filters(f ->
+                        .rewritePath("/rest-client(?<segment>/?.*)", "/api/rest-client${segment}")
+
+                        .retry(retryConfig -> retryConfig.setRetries(10).setMethods(HttpMethod.GET))
+                    )
+                    .uri("lb://CONSUMER")
+              )
+            .build();
+        }
+      }
+      ```
+    - Testing: 
+      - Hitting **http://localhost:5000/rest-client** hits consumer which again access producer [which is not available]. So it will get error, so we will 
+      ![RetryAtGatewayLevelConsole](images/RetryAtGatewayLevelConsole.png)
+      ![RetryAtGatewayLevelApiResponse](images/RetryAtGatewayLevelApiResponse.png)
+      - To get proper message then in consumer, we have to add GlobalExceptionHandler
+        ```java
+        package com.gomad.consumer.exceptions;
+
+        import org.springframework.http.HttpStatus;
+        import org.springframework.http.ResponseEntity;
+        import org.springframework.web.bind.annotation.ExceptionHandler;
+        import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+        @RestControllerAdvice
+        public class GlobalExceptionHandler {
+
+            @ExceptionHandler(IllegalStateException.class)
+            public ResponseEntity<String> handleNoInstances(IllegalStateException ex) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(ex.getMessage());
+            }
+        }
+        ```
+        And in consumer application.yml:
+        ```yaml
+        server:
+          error:
+            include-message: always
+        ```
+        Now: 
+        ![RetryAtGatewayLevelApiResponse2](images/RetryAtGatewayLevelApiResponse2.png)
+
+- #### RateLimit Code setup:
+  - ##### Apache Jmeter Setup
+    - ###### Installation:
+      - Before code setup, we need to setup Apache Jmeter:
+        - Download Zip and extract of Apache Jmeter from [Apache Jmeter Download](https://jmeter.apache.org/download_jmeter.cgi)
+        - Now click **apache-jmeter-5.6.3\bin\ApacheJMeter.jar** and it will open like 
+          ![ApacheJmeterHomePage](images/ApacheJmeterHomePage.png)
+  - ##### At Microservice Level:
+    - Configuration setup is:
+      ```yaml
+      resilience4j:
+        ratelimiter:
+          instances:
+            ecomRateLimiter:
+              timeout-duration: 0
+              limit-refresh-period: 4s
+              limit-for-period: 2
+      ```
+    - Code setup is:
+      ```java
+      package com.gomad.consumer.controller;
+
+      import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+
+      @RestController
+      @RequestMapping("/api/rest-client")
+      @RequiredArgsConstructor
+      public class RestClientController {
+
+        @GetMapping("/names")
+        @RateLimiter(name = "ecomRateLimiter", fallbackMethod = "rateLimiterRetryFallback")
+        public ResponseEntity<String> getGreetingMessage(@RequestParam("name") String name){
+            if(!name.equalsIgnoreCase("gomad")){
+                throw new RuntimeException("Not allowed and tried for " + ++count + " times");
+            }
+
+            return new ResponseEntity<>(String.format("Hello Mr.%s", name), HttpStatus.OK);
+        }
+
+        public ResponseEntity<String> rateLimiterRetryFallback(@RequestParam("name") String name, Exception ex){
+            return new ResponseEntity<>("Rate limit exceeded please wait.", HttpStatus.OK);
+        }
+      }
+      ```
+    - Testing using Apache Jmeter: 
+      - Url is **http://localhost:8080/api/rest-client/names?name=gomad**
+      - ###### Creating testplan and Testing:
+      - [Test Plan] ➜ [Add] ➜ [Threads (User)] ➜ [Thread Group] then rename to RateLimitAtServiceLevelThreadGroup and keep No.of threads to 30 then it is like:
+        ![RateLimitAtServiceLevelJmeterThreadGroup](images/RateLimitAtServiceLevelJmeterThreadGroup.png)
+      - [RateLimitAtServiceLevelThreadGroup] ➜ [Add] ➜ [Sampler] ➜ [Http Request]
+        ![RateLimitAtServiceLevelHttpRequest](images/RateLimitAtServiceLevelHttpRequest.png)
+      - [RateLimitAtServiceLevelHttpRequest] ➜ [Add] ➜ [Listener] ➜ [View Results Tree] ➜ [RateLimitAtServiceLevelHttpRequestTestResults]
+        ![RateLimitAtServiceLevelHttpRequestTestResultsSuccess](images/RateLimitAtServiceLevelHttpRequestTestResultsSuccess.png)
+        ![RateLimitAtServiceLevelHttpRequestTestResultsExceedLimit](images/RateLimitAtServiceLevelHttpRequestTestResultsExceedLimit.png)
+      - Report:
+        - Since we have max limit to 2, and in jmeter it is 30, only 2 will be success and rest will get **"Rate limit exceeded please wait."**
+  - ##### At Gateway Level:
+    - In gateway, we need to configure redis for ratelimiting and dependency neede is **spring-boot-starter-data-redis-reactive**:
+      ```xml
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+      </dependency>
+      ```
+    - Docker Redis image command is:
+      ```powershell
+      docker run -d --name redis -p 6379:6379 redis
+      ```
+    - yaml config: No config
+    - Code Config:
+      ```java
+      package com.gomad.gateway;
+
+      import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
+      import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
+
+      @Configuration
+      public class RoutingConfig {
+
+          <!-- REDIS RATE LIMIT BEAN -->
+          @Bean
+          public RedisRateLimiter redisRateLimiter(){
+              return new RedisRateLimiter(10, 20, 1);
+          }
+
+          <!-- REDIS RATE HOSTNAME KEY WISE RESOLVING BEAN, we can configure using users also -->
+          @Bean
+          public KeyResolver hostNameKeyResolver(){
+              return exchange -> Mono.just(exchange.getRequest().getRemoteAddress().getHostName());
+          }
+
+          @Bean
+          public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+              return builder.routes()
+                .route("consumer",
+                  r -> 
+                    r
+                      .path("/rest-client/**", "/api/feign/**", "/api/web-client/**", "/api/http-interface/**")
+                      .filters(f ->
+                        f
+                          .rewritePath("/rest-client(?<segment>/?.*)", "/api/rest-client${segment}")
+
+                          <!-- RATE LIMITER CONFIG -->
+                          .requestRateLimiter(config -> 
+                          config
+                                .setRateLimiter(redisRateLimiter())
+                                .setKeyResolver(hostNameKeyResolver())
+                           )
+                      )
+                .uri("lb://CONSUMER")
+              )
+              .build();
+          }
+      }
+      ```
+    - In Consumer, for this I have created API:
+      ```java
+      package com.gomad.consumer.controller;
+
+      @RestController
+      @RequestMapping("/api/rest-client")
+      @RequiredArgsConstructor
+      public class RestClientController {
+        @GetMapping("/rate-limiter")
+        public ResponseEntity<String> getGreetingMessageForRateLimiter(){
+            return new ResponseEntity<>(String.format("Hello Mr.%s", "govind Roshini"), HttpStatus.OK);
+        }
+      }
+    - Testing:
+      - API I have created for this in consumer is: **http://localhost:5000/rest-client/rate-limiter**
+      - Make sure redis docker image is running else run ```docker run -d --name redis -p 6379:6379 redis```
+      - ###### Creating testplan and Testing:
+        - [Test Plan] ➜ [Add] ➜ [Threads (User)] ➜ [Thread Group] then rename to RateLimitAtGatewayLevelThreadGroup and keep No.of threads to 30 then it is like:
+          ![RateLimitAtGatewayLevelThreadGroup](images/RateLimitAtGatewayLevelThreadGroup.png)
+
+        - [RateLimitAtGatewayLevelThreadGroup] ➜ [Add] ➜ [Sampler] ➜ [Http Request]
+          ![RateLimitAtGatewayLevelHTTPRequest](images/RateLimitAtGatewayLevelHTTPRequest.png)
+          
+        - [RateLimitAtGatewayLevelHTTPRequest] ➜ [Add] ➜ [Listener] ➜ [View Results Tree] ➜ [RateLimitAtGatewayLevelHTTPRequestResult]
+          ![RateLimitAtGatewayLevelHTTPRequestResultSuccess](images/RateLimitAtGatewayLevelHTTPRequestResultSuccess.png)
+          ![RateLimitAtGatewayLevelHttpRequestTestResultsExceedLimit](images/RateLimitAtGatewayLevelHttpRequestTestResultsExceedLimit.png)
+        - Report:
+          - Since we have max limit to 2, and in jmeter it is 30, only 2 will be success and rest will get **"Rate limit exceeded please wait."**
+    - Docs for reference [redis-ratelimiter-code-setup](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/requestratelimiter-factory.html#redis-ratelimiter)
 
 
 

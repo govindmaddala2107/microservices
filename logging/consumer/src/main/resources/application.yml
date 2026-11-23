@@ -2,6 +2,10 @@ spring:
   application:
     name: consumer
 
+server:
+  error:
+    include-message: always
+
 management:
   endpoints:
     web:
@@ -10,6 +14,9 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
   tracing:
     sampling:
       probability: 1.0
@@ -35,7 +42,7 @@ logging:
 resilience4j:
   circuitbreaker:
     instances:
-      productService:
+      producerService:
         # Exposes Circuit Breaker status (UP, DOWN, OPEN, CLOSED, HALF_OPEN)
         # through Spring Boot Actuator health endpoint.
         registerHealthIndicator: true
@@ -69,3 +76,14 @@ resilience4j:
         # to calculate the failure rate.
         # Alternative: time_based (e.g., last 60 seconds).
         slidingWindowType: count_based
+  retry:
+    instances:
+      ecomRetryBreaker:
+        maxAttempts: 5
+        waitDuration: 500ms
+  ratelimiter:
+    instances:
+      ecomRateLimiter:
+        timeout-duration: 0
+        limit-refresh-period: 4s
+        limit-for-period: 2
