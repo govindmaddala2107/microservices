@@ -289,7 +289,7 @@
       - RabbitMQ can be installed locally but using docker we can install it by 
         ```powershell
         # latest RabbitMQ 4.x
-        docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+        docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
         ```
       - rabbitmq runs on port 5674 and rabbitmq-management runs on 15672.
       - default credentials are guest and guest.
@@ -2977,10 +2977,96 @@ Receive Plain Text Configuration
           - Since we have max limit to 2, and in jmeter it is 30, only 2 will be success and rest will get **"Rate limit exceeded please wait."**
     - Docs for reference [redis-ratelimiter-code-setup](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway-server-webflux/gatewayfilter-factories/requestratelimiter-factory.html#redis-ratelimiter)
 
+## Asynchronous Communication:
+- Asynchronous communication allows tasks to run in the background without blocking the main thread. This improves application responsiveness and throughput, especially for time-consuming operations such as sending emails, calling external APIs, generating reports, or processing large files.
+- #### Problem with Synchronous Communication:
+  ![NormalCommunication](images/NormalCommunication.png)
+  - ##### How it Works
+    1. Order Service receives a request to place an order.
+    2. Order Service calls Payment Service directly (REST API).
+    3. Order Service waits for Payment Service to process the payment.
+    4. After receiving the response, Order Service continues processing.
+  - ##### Drawbacks
+    - ###### 1. Tight Coupling
+      - Order Service depends on Payment Service being available.
+      - If Payment Service is down, Order Service cannot complete the request.
 
+    - ###### 2. Increased Response Time
+      - User must wait until Payment Service completes processing.
+      - Slow downstream services increase overall latency.
 
+    - ###### 3. Poor Scalability
+      - As traffic increases, both services become bottlenecks.
+      - Threads remain blocked while waiting for responses.
 
+    - ###### 4. Single Point of Failure
+      - Failure in Payment Service directly impacts Order Service.
 
+---
+- #### Asynchronous Communication:
+  - ##### How it Works
+    1. Order Service creates an order.
+    2. Order Service publishes an event/message to a message broker.
+    3. Message is stored safely in the queue/topic.
+    4. Order Service immediately returns success response.
+    5. Payment Service consumes the message whenever it is ready.
+    6. Payment processing happens independently.
+    ![AsynchronousCommunication](images/AsynchronousCommunication.png)
+  - ##### Benefits of Asynchronous Communication:
+    - ###### Better Performance:
+      - Faster responses by avoiding waiting/blocking.
+    - ###### Fault Tolerance	
+      - System continues working despite service failures.
+    - ###### Scalability:
+      - Handles increasing load efficiently.
+    - ###### Loose Coupling:
+      - Services remain independent and less dependent on each other.
+  - #### Message Exchanges
+    - A **Message Exchange** is the process of transferring messages between a producer (sender) and a consumer (receiver) through a messaging system such as Kafka, RabbitMQ, or ActiveMQ.
+    - Instead of communicating directly, services exchange messages via a broker, enabling asynchronous communication.
+    - A message exchange acts as a communication bridge that transfers business events or data between services without creating tight dependencies.
+
+    - ##### Purpose
+      - Decouples sender and receiver.
+      - Enables reliable message delivery.
+      - Allows services to communicate independently.
+      - Supports scalability and fault tolerance.
+
+    - ##### Flow:
+      ```Producer --> Message Broker --> Consumer```
+    - ##### Example:
+      - Here, the Order Service publishes a message, and the Payment Service consumes it later. The two services do not need to be active at the same time.
+        ```text
+        Order Service
+            ↓ [OrderCreated Event]
+          Kafka
+            ↓
+        Payment Service
+        ```
+  - #### Types of Messaging Exchanges:
+    - Exchange:
+      - Exchange is like a postman which receive all the messages from producers.
+      - Now **Bindings** exists between Exchange and **Queue** and based on some logic, it will push messages into queues.
+      - **Queues** are like buckets, where messages will be stored and there consumers will take messages.
+      ![MessageExchange](images/MessageExchange.png)
+    - ###### Types:
+      - Based on binding techniques, exchanges are of following types:
+        - Direct
+        - Fanout
+        - Topic
+        - Headers
+  - #### Direct Exchange:
+    ![DirectExchange](images/DirectExchange.png)
+  - #### Fanout Exchange
+    ![FanoutExchange](images/FanoutExchange.png)
+  - #### Topic Exchange
+    ![TopicExchange](images/TopicExchange.png)
+  - #### Headers Exchange
+    ![HeadersExchange](images/HeadersExchange.png)
+  - #### Exchanges Summary
+    ![ExchangesSummary](images/ExchangesSummary.png)
+
+  - dhsjkhdf
 ## Another Topic
 
 
